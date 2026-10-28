@@ -22,30 +22,36 @@ Kuramoto sobre redes cuya frecuencia natural es el grado del nodo (ω_i = k_i). 
 
 ## Reproducción en Rust
 
-Código: `codigo/explosive_sync/` (RK4, grafos CSR, generador ChaCha8 con semilla). Datos en `codigo/explosive_sync/resultados/`.
+Código: `codigo/explosive_sync/` (RK4, grafos CSR, ChaCha8 con semilla, hilos de std). Datos y gráficas en `codigo/explosive_sync/resultados/`. Se ejecuta en WSL2 (Ubuntu), porque Windows bloqueaba los ejecutables nuevos con una política de control de aplicaciones.
 
-**Condiciones:** N = 1000, ⟨k⟩ ≈ 6 (m = 3), semilla 1, δλ = 0.25 (más grueso que el 0.02 del artículo), transitorio 40 y promedio 10 unidades de tiempo.
+**Condiciones:** N = 1000, ⟨k⟩ ≈ 6 (m = 3), 8 redes por caso (semillas 1 a 8), δλ = 0.02 entre λ = 1.0 y 2.2, transitorio 40 y promedio 10 unidades de tiempo, dt ≈ 1/(λ·k_max) (límite 0.01).
 
 | Caso | Resultado |
 |---|---|
-| BA (α = 0), k_max = 88 | Rama hacia adelante: r ≈ 0.07 en λ = 1.5 y r = 0.946 en λ = 1.75. Rama hacia atrás: r = 0.918 en λ = 1.5, y r ≈ 0.07 en λ = 1.25. **Hay histéresis**, con una ventana entre λ ≈ 1.25 y 1.75. |
-| ER (α = 1), k_max = 25 | Salto de r entre λ = 1.25 y 1.5. Las dos ramas coinciden con esta resolución (sin histéresis visible). |
-| Estrella K = 10 | En la rama hacia atrás, el hub pierde el enganche entre λ = 0.80 y 0.85, coherente con λ_c = 0.818. |
+| **Estrella K = 10** (λ_c = 0.8182 y r_c = 0.9091 según el artículo) | Rama hacia atrás: el hub queda enganchado (frecuencia efectiva = Ω = 1.8182) para λ ≥ 0.82 y no lo está en λ = 0.80. Coincide con λ_c = 0.818. En λ = 0.82, r = 0.920 (r_c = 0.909 en λ_c exacto). Rama hacia adelante: el hub se engancha en λ ≈ 1.60, y hay histéresis. |
+| **BA (α = 0)**, ω = k | Rama hacia atrás: r = 0.84 ya en λ = 1.3, y cae a 0.06 en λ = 1.2. Rama hacia adelante: sube entre λ = 1.4 y 1.7, y el punto de salto varía de red a red (desviación entre redes ≈ 0.27–0.37 en el salto). Hay **histéresis** clara, de unos 0.3 en λ. Ver `ba_alpha0_fine.svg`. |
+| **ER (α = 1)**, ω = k | Subida rápida entre λ = 1.3 y 1.5. Con δλ = 0.02 aparece una histéresis pequeña (λ = 1.3: r = 0.19 hacia adelante y 0.48 hacia atrás; ambas ramas coinciden desde λ = 1.5). Ver `er_alpha1_fine.svg`. |
 
-**Lo que se concluye y lo que no:**
-- Cualitativamente se reproduce lo esencial: la histéresis aparece en BA con ω = k.
-- Con δλ = 0.25 no se puede medir λ_c con precisión, ni afirmar que ER es de segundo orden. Falta refinar el barrido (δλ = 0.02), promediar sobre varias redes y comprobar la convergencia en dt y en el tiempo de transitorio.
-- En la estrella, las hojas tienen todas la misma frecuencia, así que permanecen en fase entre sí aunque el hub se desenganche. Por eso r de la rama hacia atrás no cae a 0 y no basta para ver el salto. Para validar la teoría habrá que medir también la frecuencia efectiva del hub (Ec. 3). Eso queda pendiente.
-- No se ha hecho ninguna figura (no hay matplotlib instalado).
+**Lo que se concluye:**
+- La estrella reproduce el resultado analítico: el desenganche del hub ocurre en λ_c con la resolución usada (δλ = 0.02).
+- En BA hay histéresis y el salto es abrupto, como en el artículo.
+- **Diferencia con el artículo:** el artículo describe ER como de segundo orden (curvas que coinciden). En nuestras simulaciones ER sube de forma muy empinada y muestra una histéresis pequeña en una ventana estrecha. No sabemos si es un efecto del tamaño finito, del tiempo de transitorio corto (cerca de la transición el sistema tarda más en relajar) o de otra causa. Hay que comprobarlo antes de afirmar nada.
+
+**Pendiente:**
+- Convergencia numérica: repetir con TTRANS mayor y con DTF menor, y comprobar que no cambia nada.
+- Más redes y N mayor para ver la dependencia con el tamaño.
+- Comparar las curvas con la Fig. 1 del artículo en valores concretos de λ (aún no se ha hecho con los datos de la figura).
+- Barrer γ y las correlaciones parciales (Fig. 3 y notas 24 y 27).
 
 ## Posibles aportes (a valorar, sin afirmar novedad)
 
 - Código abierto y reproducible con semilla del protocolo completo, que el artículo no detalla.
-- Barrido fino con muchas realizaciones de red, en paralelo (rayon).
+- Barrido fino con muchas realizaciones de red, en paralelo.
 - Estudio de convergencia numérica: integrador, dt, tiempo de transitorio.
 - Variantes citadas en el artículo (ω ~ k^a, correlación parcial p).
 
 ## Notas técnicas
 
-- El paso dt se limita por la rigidez del nodo hub (dt·λ·k_max ≲ 1), lo que encarece los barridos en BA: unos 8 min para 25 puntos, hacia adelante y hacia atrás. Hay que acelerar con un integrador adaptativo o con paralelismo antes de afinar el barrido.
-- En Windows, la ruta de la carpeta es demasiado larga para el enlazador. Se compila con `CARGO_TARGET_DIR` en una ruta corta.
+- El paso dt se limita por la rigidez del nodo hub (dt·λ·k_max ≈ 1). Con senos y cosenos precalculados el barrido grueso de BA bajó de unos 8 minutos a 2. El barrido fino (61 puntos, 8 redes, 3 casos) tarda unos 15–20 minutos en 4 núcleos.
+- Las rutas largas de Windows rompen el enlazador y `git init` en la carpeta temporal. Se compila en WSL con `CARGO_TARGET_DIR=$HOME/rt/es` y el código se lee desde `/mnt/c/...`.
+- `run_fine.sh` reproduce todos los datos y las gráficas de esta ficha.

@@ -6,7 +6,7 @@ Estado: `por verificar` → `verificado` (confirmado en fuente, 2026-10-28) → 
 
 | # | Referencia | DOI / arXiv | Tema | Estado |
 |---|---|---|---|---|
-| 1 | Gómez-Gardeñes, Gómez, Arenas, Moreno, "Explosive Synchronization Transitions in Scale-free Networks", Phys. Rev. Lett. 106, 128701 (2011) | 10.1103/PhysRevLett.106.128701 · arXiv:1102.4823 | Kuramoto con frecuencias correlacionadas con el grado; transición abrupta; solución analítica en grafo estrella | leído · reproducción parcial ([ficha](fichas/01-gomez-gardenes-2011-explosive-sync.md)) |
+| 1 | Gómez-Gardeñes, Gómez, Arenas, Moreno, "Explosive Synchronization Transitions in Scale-free Networks", Phys. Rev. Lett. 106, 128701 (2011) | 10.1103/PhysRevLett.106.128701 · arXiv:1102.4823 | Kuramoto con frecuencias correlacionadas con el grado; transición abrupta; solución analítica en grafo estrella | leído · reproducido (con una discrepancia en ER, por aclarar) ([ficha](fichas/01-gomez-gardenes-2011-explosive-sync.md)) |
 | 2 | Nekovee, Moreno, Bianconi, Marsili, "Theory of rumour spreading in complex social networks", Physica A 374, 457–470 (2007) | arXiv:0807.1458 | Modelo de rumores (Maki-Thompson + SIR), ecuaciones de campo medio | verificado |
 | 3 | Battiston et al. (incl. Y. Moreno), "The physics of higher-order interactions in complex systems", Nature Physics 17, 1093–1098 (2021) | 10.1038/s41567-021-01371-4 · arXiv:2110.06023 | Perspectiva sobre orden superior | verificado |
 | 4 | Moreno, Pacheco, "Synchronization of Kuramoto oscillators in scale-free networks", Europhys. Lett. 68, 603 (2004) | arXiv:cond-mat/0401266 | Kuramoto en redes libres de escala | verificado (datos según búsqueda; falta abrir la ficha) |

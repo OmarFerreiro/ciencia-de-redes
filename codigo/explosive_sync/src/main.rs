@@ -5,11 +5,17 @@
 //! Kuramoto: dθ_i/dt = ω_i + λ Σ_j A_ij sin(θ_j − θ_i), con ω_i = k_i.
 //!
 //! Uso:
-//!   explosive_sync sweep <alpha> <n> <k_medio> <seed> <lmin> <lmax> <dl> <salida.csv>
+//!   explosive_sync sweep <alpha> <n> <k_medio> <n_redes> <lmin> <lmax> <dl> <salida.csv>
 //!   explosive_sync star  <K> <dl> <salida.csv>
+//!   explosive_sync plot  <entrada.csv> <salida.svg> "<titulo>"
+//!
+//! Variables de entorno opcionales: TTRANS (40), TMEAS (10), DTF (1.0, factor del paso).
+//! CSV: lambda, r_fwd, std_fwd, r_bwd, std_bwd, wHub_fwd, wHub_bwd
+//! (media sobre redes; wHub = frecuencia efectiva del nodo de mayor grado).
 
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
+use std::fmt::Write as _;
 use std::io::Write;
 
 /// Grafo en formato CSR (listas de vecinos contiguas en memoria).
@@ -47,6 +53,10 @@ impl Graph {
     fn degree(&self, i: usize) -> usize {
         self.offsets[i + 1] - self.offsets[i]
     }
+
+    fn hub(&self) -> usize {
+        (0..self.n()).max_by_key(|&i| self.degree(i)).unwrap()
+    }
 }
 
 /// Modelo BA–ER de Gómez-Gardeñes & Moreno (2006): cada enlace nuevo se une,
@@ -57,7 +67,6 @@ fn ba_er(n: usize, m: usize, alpha: f64, rng: &mut ChaCha8Rng) -> Graph {
     let mut edges: Vec<(usize, usize)> = Vec::new();
     // `stubs` contiene cada nodo tantas veces como su grado: muestrear de aquí es preferencial.
     let mut stubs: Vec<usize> = Vec::new();
-    // Núcleo inicial: grafo completo de m+1 nodos.
     for i in 0..=m {
         for j in 0..i {
             edges.push((i, j));
@@ -91,87 +100,125 @@ fn star(k: usize) -> Graph {
     Graph::from_edges(k + 1, &edges)
 }
 
-struct Kuramoto<'a> {
-    g: &'a Graph,
-    omega: Vec<f64>,
-    lambda: f64,
+/// Buffers de trabajo reutilizados en cada paso de integración.
+struct Work {
+    k: [Vec<f64>; 4],
+    tmp: Vec<f64>,
+    sin: Vec<f64>,
+    cos: Vec<f64>,
 }
 
-impl Kuramoto<'_> {
-    fn deriv(&self, th: &[f64], out: &mut [f64]) {
-        for i in 0..self.g.n() {
-            let (a, b) = (self.g.offsets[i], self.g.offsets[i + 1]);
-            let mut s = 0.0;
-            for &j in &self.g.neighbors[a..b] {
-                s += (th[j as usize] - th[i]).sin();
-            }
-            out[i] = self.omega[i] + self.lambda * s;
+impl Work {
+    fn new(n: usize) -> Self {
+        Work {
+            k: std::array::from_fn(|_| vec![0.0; n]),
+            tmp: vec![0.0; n],
+            sin: vec![0.0; n],
+            cos: vec![0.0; n],
         }
     }
+}
 
-    /// Un paso de Runge-Kutta de 4º orden con buffers reutilizados.
-    fn rk4(&self, th: &mut [f64], dt: f64, buf: &mut [Vec<f64>; 5]) {
-        let n = th.len();
-        let [k1, k2, k3, k4, tmp] = buf;
-        self.deriv(th, k1);
-        for i in 0..n {
-            tmp[i] = th[i] + 0.5 * dt * k1[i];
+/// dθ_i/dt. Se usa sin(θ_j − θ_i) = sinθ_j cosθ_i − cosθ_j sinθ_i, de modo que
+/// solo se calculan N senos/cosenos por evaluación en vez de 2E senos.
+fn deriv(g: &Graph, omega: &[f64], lambda: f64, th: &[f64], s: &mut [f64], c: &mut [f64], out: &mut [f64]) {
+    for i in 0..th.len() {
+        let (si, ci) = th[i].sin_cos();
+        s[i] = si;
+        c[i] = ci;
+    }
+    for i in 0..th.len() {
+        let (a, b) = (g.offsets[i], g.offsets[i + 1]);
+        let (mut ss, mut cc) = (0.0, 0.0);
+        for &j in &g.neighbors[a..b] {
+            ss += s[j as usize];
+            cc += c[j as usize];
         }
-        self.deriv(tmp, k2);
-        for i in 0..n {
-            tmp[i] = th[i] + 0.5 * dt * k2[i];
-        }
-        self.deriv(tmp, k3);
-        for i in 0..n {
-            tmp[i] = th[i] + dt * k3[i];
-        }
-        self.deriv(tmp, k4);
-        for i in 0..n {
-            th[i] += dt / 6.0 * (k1[i] + 2.0 * k2[i] + 2.0 * k3[i] + k4[i]);
-        }
+        out[i] = omega[i] + lambda * (ss * c[i] - cc * s[i]);
+    }
+}
+
+/// Un paso de Runge-Kutta de 4º orden.
+fn rk4(g: &Graph, omega: &[f64], lambda: f64, th: &mut [f64], dt: f64, w: &mut Work) {
+    let n = th.len();
+    let Work { k, tmp, sin, cos } = w;
+    let [k1, k2, k3, k4] = k;
+    deriv(g, omega, lambda, th, sin, cos, k1);
+    for i in 0..n {
+        tmp[i] = th[i] + 0.5 * dt * k1[i];
+    }
+    deriv(g, omega, lambda, tmp, sin, cos, k2);
+    for i in 0..n {
+        tmp[i] = th[i] + 0.5 * dt * k2[i];
+    }
+    deriv(g, omega, lambda, tmp, sin, cos, k3);
+    for i in 0..n {
+        tmp[i] = th[i] + dt * k3[i];
+    }
+    deriv(g, omega, lambda, tmp, sin, cos, k4);
+    for i in 0..n {
+        th[i] += dt / 6.0 * (k1[i] + 2.0 * k2[i] + 2.0 * k3[i] + k4[i]);
     }
 }
 
 fn order_parameter(th: &[f64]) -> f64 {
     let (mut c, mut s) = (0.0, 0.0);
     for &t in th {
-        c += t.cos();
-        s += t.sin();
+        let (si, ci) = t.sin_cos();
+        c += ci;
+        s += si;
     }
     (c * c + s * s).sqrt() / th.len() as f64
 }
 
-/// Continuación adiabática: se mantiene el estado entre valores consecutivos de λ.
-/// Para cada λ: transitorio `t_trans`, luego media de r durante `t_meas`.
-fn continuation(
-    g: &Graph,
-    omega: &[f64],
-    lambdas: &[f64],
-    th: &mut Vec<f64>,
+#[derive(Clone, Copy, Default)]
+struct Point {
+    r: f64,
+    w_hub: f64,
+}
+
+#[derive(Clone, Copy)]
+struct Params {
     t_trans: f64,
     t_meas: f64,
-) -> Vec<f64> {
-    let kmax = (0..g.n()).map(|i| g.degree(i)).max().unwrap() as f64;
-    let n = g.n();
-    let mut buf: [Vec<f64>; 5] = std::array::from_fn(|_| vec![0.0; n]);
-    let mut result = Vec::with_capacity(lambdas.len());
+    dtf: f64,
+}
+
+impl Params {
+    fn from_env() -> Self {
+        let get = |k: &str, d: f64| std::env::var(k).ok().and_then(|v| v.parse().ok()).unwrap_or(d);
+        Params { t_trans: get("TTRANS", 40.0), t_meas: get("TMEAS", 10.0), dtf: get("DTF", 1.0) }
+    }
+}
+
+/// Continuación adiabática: se mantiene el estado entre valores consecutivos de λ.
+/// Para cada λ: transitorio `t_trans`, luego media de r y frecuencia efectiva del hub
+/// (Δθ_hub/T, con la fase sin envolver) durante `t_meas`.
+fn continuation(g: &Graph, omega: &[f64], lambdas: &[f64], th: &mut [f64], p: Params) -> Vec<Point> {
+    let kmax = g.degree(g.hub()) as f64;
+    let hub = g.hub();
+    let mut w = Work::new(g.n());
+    let mut out = Vec::with_capacity(lambdas.len());
     for &lam in lambdas {
-        let sys = Kuramoto { g, omega: omega.to_vec(), lambda: lam };
-        // Paso estable para RK4: dt·λ·k_max ≲ 1 (el nodo más conectado es el más rápido).
-        let dt = (0.01_f64).min(0.5 / (lam.max(0.1) * kmax));
-        let steps_trans = (t_trans / dt) as usize;
-        let steps_meas = (t_meas / dt) as usize;
+        // Estabilidad de RK4: dt·λ·k_max del orden de 1 (el hub es el nodo más rápido).
+        let dt = (0.01_f64).min(p.dtf / (lam.max(0.1) * kmax));
+        let steps_trans = (p.t_trans / dt) as usize;
+        let steps_meas = (p.t_meas / dt) as usize;
         for _ in 0..steps_trans {
-            sys.rk4(th, dt, &mut buf);
+            rk4(g, omega, lam, th, dt, &mut w);
         }
+        let th0 = th[hub];
         let mut acc = 0.0;
         for _ in 0..steps_meas {
-            sys.rk4(th, dt, &mut buf);
+            rk4(g, omega, lam, th, dt, &mut w);
             acc += order_parameter(th);
         }
-        result.push(acc / steps_meas as f64);
+        out.push(Point {
+            r: acc / steps_meas as f64,
+            w_hub: (th[hub] - th0) / (steps_meas as f64 * dt),
+        });
     }
-    result
+    out
 }
 
 fn arange(a: f64, b: f64, d: f64) -> Vec<f64> {
@@ -179,59 +226,132 @@ fn arange(a: f64, b: f64, d: f64) -> Vec<f64> {
     (0..=n).map(|i| a + i as f64 * d).collect()
 }
 
-fn write_csv(path: &str, lambdas: &[f64], fwd: &[f64], bwd: &[f64]) {
-    let mut f = std::fs::File::create(path).expect("no se pudo crear el CSV");
-    writeln!(f, "lambda,r_forward,r_backward").unwrap();
-    for i in 0..lambdas.len() {
-        writeln!(f, "{:.4},{:.6},{:.6}", lambdas[i], fwd[i], bwd[i]).unwrap();
-    }
-}
-
-fn run(g: &Graph, lambdas: &[f64], seed: u64, t_trans: f64, t_meas: f64) -> (Vec<f64>, Vec<f64>) {
+/// Barrido hacia adelante y hacia atrás sobre una red, con ω_i = k_i.
+fn run(g: &Graph, lambdas: &[f64], seed: u64, p: Params) -> (Vec<Point>, Vec<Point>) {
     let omega: Vec<f64> = (0..g.n()).map(|i| g.degree(i) as f64).collect();
     let mut rng = ChaCha8Rng::seed_from_u64(seed ^ 0x9E37_79B9);
     let mut th: Vec<f64> = (0..g.n()).map(|_| rng.gen_range(0.0..std::f64::consts::TAU)).collect();
-    let fwd = continuation(g, &omega, lambdas, &mut th, t_trans, t_meas);
+    let fwd = continuation(g, &omega, lambdas, &mut th, p);
     let rev: Vec<f64> = lambdas.iter().rev().copied().collect();
-    let mut bwd = continuation(g, &omega, &rev, &mut th, t_trans, t_meas);
+    let mut bwd = continuation(g, &omega, &rev, &mut th, p);
     bwd.reverse();
     (fwd, bwd)
 }
 
+fn mean_std(xs: &[f64]) -> (f64, f64) {
+    let m = xs.iter().sum::<f64>() / xs.len() as f64;
+    let v = xs.iter().map(|x| (x - m).powi(2)).sum::<f64>() / xs.len() as f64;
+    (m, v.sqrt())
+}
+
+/// Promedia varias realizaciones y escribe el CSV.
+fn write_csv(path: &str, lambdas: &[f64], runs: &[(Vec<Point>, Vec<Point>)]) {
+    let mut f = std::fs::File::create(path).expect("no se pudo crear el CSV");
+    writeln!(f, "lambda,r_fwd,std_fwd,r_bwd,std_bwd,whub_fwd,whub_bwd").unwrap();
+    for i in 0..lambdas.len() {
+        let col = |sel: &dyn Fn(&(Vec<Point>, Vec<Point>)) -> f64| -> Vec<f64> { runs.iter().map(sel).collect() };
+        let (rf, sf) = mean_std(&col(&|r| r.0[i].r));
+        let (rb, sb) = mean_std(&col(&|r| r.1[i].r));
+        let (wf, _) = mean_std(&col(&|r| r.0[i].w_hub));
+        let (wb, _) = mean_std(&col(&|r| r.1[i].w_hub));
+        writeln!(f, "{:.4},{:.6},{:.6},{:.6},{:.6},{:.6},{:.6}", lambdas[i], rf, sf, rb, sb, wf, wb).unwrap();
+    }
+}
+
+/// Gráfica SVG de r(λ) con ramas hacia adelante y hacia atrás (± desviación entre redes).
+fn plot_svg(csv: &str, out: &str, title: &str) {
+    let text = std::fs::read_to_string(csv).expect("no se pudo leer el CSV");
+    let rows: Vec<Vec<f64>> = text
+        .lines()
+        .skip(1)
+        .map(|l| l.split(',').map(|x| x.parse().unwrap()).collect())
+        .collect();
+    let (w, h, ml, mr, mt, mb) = (680.0, 440.0, 60.0, 20.0, 40.0, 50.0);
+    let (x0, x1) = (rows[0][0], rows[rows.len() - 1][0]);
+    let px = |x: f64| ml + (x - x0) / (x1 - x0) * (w - ml - mr);
+    let py = |y: f64| h - mb - y * (h - mt - mb);
+    let mut s = String::new();
+    write!(s, r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {h}" font-family="sans-serif" font-size="12"><rect width="100%" height="100%" fill="white"/>"##).unwrap();
+    write!(s, r##"<text x="{}" y="22" font-size="14" text-anchor="middle">{}</text>"##, w / 2.0, title).unwrap();
+    for i in 0..=5 {
+        let y = i as f64 / 5.0;
+        let yy = py(y);
+        write!(s, r##"<line x1="{ml}" x2="{}" y1="{yy:.1}" y2="{yy:.1}" stroke="#ddd"/><text x="{}" y="{:.1}" text-anchor="end">{:.1}</text>"##, w - mr, ml - 6.0, yy + 4.0, y).unwrap();
+    }
+    for i in 0..=6 {
+        let x = x0 + (x1 - x0) * i as f64 / 6.0;
+        write!(s, r##"<text x="{:.1}" y="{}" text-anchor="middle">{:.2}</text>"##, px(x), h - mb + 18.0, x).unwrap();
+    }
+    write!(s, r##"<text x="{}" y="{}" text-anchor="middle">λ</text><text x="16" y="{}" text-anchor="middle" transform="rotate(-90 16 {})">r</text>"##, w / 2.0, h - 10.0, h / 2.0, h / 2.0).unwrap();
+    for (ci, si, color, label, lx) in [(1usize, 2usize, "#1f77b4", "adelante", 90.0), (3, 4, "#d62728", "atrás", 190.0)] {
+        let upper: Vec<String> = rows.iter().map(|r| format!("{:.1},{:.1}", px(r[0]), py((r[ci] + r[si]).min(1.0)))).collect();
+        let lower: Vec<String> = rows.iter().rev().map(|r| format!("{:.1},{:.1}", px(r[0]), py((r[ci] - r[si]).max(0.0)))).collect();
+        write!(s, r##"<polygon points="{} {}" fill="{color}" opacity="0.15"/>"##, upper.join(" "), lower.join(" ")).unwrap();
+        let line: Vec<String> = rows.iter().map(|r| format!("{:.1},{:.1}", px(r[0]), py(r[ci]))).collect();
+        write!(s, r##"<polyline points="{}" fill="none" stroke="{color}" stroke-width="1.6"/>"##, line.join(" ")).unwrap();
+        write!(s, r##"<circle cx="{lx}" cy="{}" r="4" fill="{color}"/><text x="{}" y="{}">{label}</text>"##, mt + 8.0, lx + 8.0, mt + 12.0).unwrap();
+    }
+    write!(s, r##"<rect x="{ml}" y="{mt}" width="{}" height="{}" fill="none" stroke="black"/></svg>"##, w - ml - mr, h - mt - mb).unwrap();
+    std::fs::write(out, s).expect("no se pudo escribir el SVG");
+}
+
 fn main() {
     let a: Vec<String> = std::env::args().collect();
-    let mode = a.get(1).map(String::as_str).unwrap_or("");
-    match mode {
+    let p = Params::from_env();
+    match a.get(1).map(String::as_str).unwrap_or("") {
         "sweep" if a.len() == 10 => {
             let alpha: f64 = a[2].parse().unwrap();
             let n: usize = a[3].parse().unwrap();
             let kmean: f64 = a[4].parse().unwrap();
-            let seed: u64 = a[5].parse().unwrap();
+            let nets: u64 = a[5].parse().unwrap();
             let (lmin, lmax, dl): (f64, f64, f64) =
                 (a[6].parse().unwrap(), a[7].parse().unwrap(), a[8].parse().unwrap());
-            let mut rng = ChaCha8Rng::seed_from_u64(seed);
-            let g = ba_er(n, (kmean / 2.0).round() as usize, alpha, &mut rng);
-            let kmax = (0..n).map(|i| g.degree(i)).max().unwrap();
-            let mean = g.neighbors.len() as f64 / n as f64;
-            eprintln!("N={n} <k>={mean:.3} k_max={kmax} alpha={alpha} seed={seed}");
             let lambdas = arange(lmin, lmax, dl);
-            let (fwd, bwd) = run(&g, &lambdas, seed, 40.0, 10.0);
-            write_csv(&a[9], &lambdas, &fwd, &bwd);
+            eprintln!("N={n} <k>≈{kmean} alpha={alpha} redes={nets} puntos={} {:?}", lambdas.len(), (p.t_trans, p.t_meas, p.dtf));
+            // Una red por hilo (hilos de std: sin dependencias con script de compilación).
+            let next = std::sync::atomic::AtomicU64::new(1);
+            let workers = std::thread::available_parallelism().map_or(1, |x| x.get());
+            let mut runs: Vec<(u64, (Vec<Point>, Vec<Point>))> = std::thread::scope(|sc| {
+                let handles: Vec<_> = (0..workers)
+                    .map(|_| {
+                        sc.spawn(|| {
+                            let mut local = Vec::new();
+                            loop {
+                                let seed = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                                if seed > nets {
+                                    break;
+                                }
+                                let mut rng = ChaCha8Rng::seed_from_u64(seed);
+                                let g = ba_er(n, (kmean / 2.0).round() as usize, alpha, &mut rng);
+                                local.push((seed, run(&g, &lambdas, seed, p)));
+                            }
+                            local
+                        })
+                    })
+                    .collect();
+                handles.into_iter().flat_map(|h| h.join().unwrap()).collect()
+            });
+            runs.sort_by_key(|r| r.0);
+            let runs: Vec<_> = runs.into_iter().map(|r| r.1).collect();
+            write_csv(&a[9], &lambdas, &runs);
         }
         "star" if a.len() == 5 => {
             let k: usize = a[2].parse().unwrap();
             let dl: f64 = a[3].parse().unwrap();
             let g = star(k);
-            let lc = (k as f64 - 1.0) / (k as f64 + 1.0);
-            let rc = k as f64 / (k as f64 + 1.0);
-            eprintln!("Estrella K={k}: teoría λc={lc:.4}, r_c={rc:.4}");
-            // ω_hub = K, ω_hoja = 1 (grado)
+            eprintln!(
+                "Estrella K={k}: teoría λc={:.4}, r_c={:.4}, Ω={:.4}",
+                (k as f64 - 1.0) / (k as f64 + 1.0),
+                k as f64 / (k as f64 + 1.0),
+                2.0 * k as f64 / (k as f64 + 1.0)
+            );
             let lambdas = arange(0.0, 2.0, dl);
-            let (fwd, bwd) = run(&g, &lambdas, 1, 200.0, 50.0);
-            write_csv(&a[4], &lambdas, &fwd, &bwd);
+            let r = run(&g, &lambdas, 1, Params { t_trans: 200.0, t_meas: 50.0, ..p });
+            write_csv(&a[4], &lambdas, &[r]);
         }
+        "plot" if a.len() == 5 => plot_svg(&a[2], &a[3], &a[4]),
         _ => {
-            eprintln!("Uso:\n  explosive_sync sweep <alpha> <n> <k_medio> <seed> <lmin> <lmax> <dl> <salida.csv>\n  explosive_sync star <K> <dl> <salida.csv>");
+            eprintln!("Uso:\n  explosive_sync sweep <alpha> <n> <k_medio> <n_redes> <lmin> <lmax> <dl> <salida.csv>\n  explosive_sync star <K> <dl> <salida.csv>\n  explosive_sync plot <entrada.csv> <salida.svg> \"<titulo>\"");
             std::process::exit(2);
         }
     }
