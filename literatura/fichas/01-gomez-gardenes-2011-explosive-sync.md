@@ -43,6 +43,26 @@ Código: `codigo/explosive_sync/` (RK4, grafos CSR, ChaCha8 con semilla, hilos d
 - Comparar las curvas con la Fig. 1 del artículo en valores concretos de λ (aún no se ha hecho con los datos de la figura).
 - Barrer γ y las correlaciones parciales (Fig. 3 y notas 24 y 27).
 
+## Comparación con la teoría de la estrella (K = 5 a 70)
+
+Datos: `codigo/explosive_sync/resultados/starscan.csv` (generados con `run_starscan.sh`, δλ = 0.01, transitorio 200, promedio 50). La rama hacia atrás arranca de un estado sincronizado. La rama enganchada exacta es sin δ = (K−1)/((K+1)λ) y r = |K + e^{iδ}|/(K+1), con cos δ > 0 (derivada aquí, no tomada del artículo).
+
+| K | λ_c teoría | λ_c simulado | diferencia | r_c del artículo K/(K+1) | r_c módulo √(K²+1)/(K+1) |
+|---|---|---|---|---|---|
+| 5 | 0.6667 | 0.670 | +0.003 | 0.833 | 0.850 |
+| 10 | 0.8182 | 0.820 | +0.002 | 0.909 | 0.914 |
+| 20 | 0.9048 | 0.910 | +0.005 | 0.952 | 0.954 |
+| 30 | 0.9355 | 0.940 | +0.005 | 0.968 | 0.968 |
+| 40 | 0.9512 | 0.960 | +0.009 | 0.976 | 0.976 |
+| 50 | 0.9608 | 0.970 | +0.009 | 0.980 | 0.981 |
+| 60 | 0.9672 | 0.970 | +0.003 | 0.984 | 0.984 |
+| 70 | 0.9718 | 0.980 | +0.008 | 0.986 | 0.986 |
+
+- **λ_c:** la simulación queda siempre por encima de la teoría, entre 0.002 y 0.009. Con una malla de 0.01 eso es el orden de la resolución (el valor simulado es el primero de la malla ya enganchado).
+- **Rama enganchada:** el error cuadrático medio entre r simulado y la fórmula exacta es menor que 5·10⁻⁶ en todos los K (se muestra como 0.00000). El integrador reproduce la curva analítica.
+- **r en λ_c:** el artículo da K/(K+1) (Ec. 10, que calcula r como promedio de cosenos). El módulo exacto es √(K²+1)/(K+1), que es algo mayor (0.5 % para K = 10, ya despreciable para K ≥ 30). La simulación mide el módulo, así que queda por encima de ambos. No es un error del artículo: es una cuestión de definición. Se puede mencionar como matiz, no como corrección.
+- **Histéresis:** la rama hacia adelante se engancha en λ = 0.85 (K = 5), 1.56 (K = 10) y 2.34 (K = 20), mientras que λ_c solo sube de 0.67 a 0.90. La histéresis crece con K, de acuerdo con la descripción de la Fig. 4b. Para K ≥ 30 la rama hacia adelante no se engancha antes de λ = 3 (no se ha medido).
+
 ## Posibles aportes (a valorar, sin afirmar novedad)
 
 - Código abierto y reproducible con semilla del protocolo completo, que el artículo no detalla.

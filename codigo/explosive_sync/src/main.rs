@@ -349,6 +349,56 @@ fn main() {
             let r = run(&g, &lambdas, 1, Params { t_trans: 200.0, t_meas: 50.0, ..p });
             write_csv(&a[4], &lambdas, &[r]);
         }
+        "starscan" if a.len() == 4 => {
+            // Compara la estrella con la teoría para varios K (K = 5, 10, 20, ..., 70).
+            // Rama enganchada exacta: sin δ = (K−1)/((K+1)λ), r = |K + e^{iδ}|/(K+1), cos δ > 0.
+            let dl: f64 = a[2].parse().unwrap();
+            let lambdas = arange(0.0, 3.0, dl);
+            let mut f = std::fs::File::create(&a[3]).expect("no se pudo crear el CSV");
+            writeln!(f, "K,lc_teoria,lc_sim,err_lc,rc_paper,rc_modulo,r_sim_en_lc,rmse_rama,lambda_fwd").unwrap();
+            for k in [5usize, 10, 20, 30, 40, 50, 60, 70] {
+                let kf = k as f64;
+                let g = star(k);
+                let omega_eff = 2.0 * kf / (kf + 1.0);
+                let pp = Params { t_trans: 200.0, t_meas: 50.0, ..p };
+                let omega: Vec<f64> = (0..g.n()).map(|i| g.degree(i) as f64).collect();
+                let locked = |pt: &Point| (pt.w_hub - omega_eff).abs() < 1e-3 * omega_eff;
+                // Rama hacia atrás desde un estado sincronizado (la rama hacia adelante solo se
+                // engancha a λ grande cuando K crece, así que no se usa para arrancarla).
+                let mut th = vec![0.0; g.n()];
+                let rev: Vec<f64> = lambdas.iter().rev().copied().collect();
+                let mut bwd = continuation(&g, &omega, &rev, &mut th, pp);
+                bwd.reverse();
+                // Menor λ a partir del cual toda la rama hacia atrás está enganchada.
+                let i_b = (0..lambdas.len()).rev().take_while(|&i| locked(&bwd[i])).last().expect("rama no enganchada");
+                // Rama hacia adelante (desde fases aleatorias): solo para K ≤ 20, con λ ≤ 3.
+                let lam_fwd = if k <= 20 {
+                    let (fwd, _) = run(&g, &lambdas, 1, pp);
+                    (0..lambdas.len()).find(|&i| locked(&fwd[i])).map_or(f64::NAN, |i| lambdas[i])
+                } else {
+                    f64::NAN
+                };
+                let exact_r = |lam: f64| {
+                    let s = (kf - 1.0) / ((kf + 1.0) * lam);
+                    (kf * kf + 2.0 * kf * (1.0 - s * s).max(0.0).sqrt() + 1.0).sqrt() / (kf + 1.0)
+                };
+                let lc = (kf - 1.0) / (kf + 1.0);
+                let sq: Vec<f64> = (i_b..lambdas.len()).map(|i| (bwd[i].r - exact_r(lambdas[i])).powi(2)).collect();
+                let rmse = (sq.iter().sum::<f64>() / sq.len() as f64).sqrt();
+                writeln!(
+                    f,
+                    "{k},{lc:.4},{:.4},{:.4},{:.4},{:.4},{:.4},{:.5},{:.4}",
+                    lambdas[i_b],
+                    lambdas[i_b] - lc,
+                    kf / (kf + 1.0),
+                    (kf * kf + 1.0).sqrt() / (kf + 1.0),
+                    bwd[i_b].r,
+                    rmse,
+                    lam_fwd
+                )
+                .unwrap();
+            }
+        }
         "plot" if a.len() == 5 => plot_svg(&a[2], &a[3], &a[4]),
         _ => {
             eprintln!("Uso:\n  explosive_sync sweep <alpha> <n> <k_medio> <n_redes> <lmin> <lmax> <dl> <salida.csv>\n  explosive_sync star <K> <dl> <salida.csv>\n  explosive_sync plot <entrada.csv> <salida.svg> \"<titulo>\"");
