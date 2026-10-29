@@ -59,15 +59,17 @@ impl Graph {
     }
 }
 
-/// Modelo BA–ER de Gómez-Gardeñes & Moreno (2006): cada enlace nuevo se une,
-/// con probabilidad `alpha`, a un nodo elegido al azar (ER) y, con probabilidad
-/// `1 - alpha`, a un nodo elegido con probabilidad proporcional a su grado (BA).
-/// Cada nodo nuevo añade `m` enlaces; <k> ≈ 2m.
+/// Modelo BA–ER de Gómez-Gardeñes & Moreno, Phys. Rev. E 73, 056124 (2006), modelo A.
+/// N = Ω nodos fijos desde el principio. Clique inicial de m+1 nodos; los demás se eligen, uno por
+/// paso y en orden aleatorio, como fuente de exactamente `m` enlaces. Cada enlace va, con
+/// probabilidad `alpha`, a un nodo uniforme entre los Ω−1 restantes (aislados incluidos) y, con
+/// 1−alpha, a un nodo del conjunto conectado con probabilidad ∝ (k_pa_entrante + A), A = m.
+/// Se prohíben autoenlaces y enlaces repetidos (se vuelve a sortear). ⟨k⟩ = 2m.
+/// Con `alpha < 0` se genera un Erdős–Rényi G(N, M) con M = N·m enlaces (referencia).
 fn ba_er(n: usize, m: usize, alpha: f64, rng: &mut ChaCha8Rng) -> Graph {
     let mut edges: Vec<(usize, usize)> = Vec::new();
+    let mut seen = std::collections::HashSet::new();
     if alpha < 0.0 {
-        // Erdős–Rényi G(N, M) con M = N·m enlaces (⟨k⟩ = 2m), degrees de Poisson.
-        let mut seen = std::collections::HashSet::new();
         while edges.len() < n * m {
             let (a, b) = (rng.gen_range(0..n), rng.gen_range(0..n));
             if a != b && seen.insert((a.min(b), a.max(b))) {
@@ -76,31 +78,42 @@ fn ba_er(n: usize, m: usize, alpha: f64, rng: &mut ChaCha8Rng) -> Graph {
         }
         return Graph::from_edges(n, &edges);
     }
-    // `stubs` contiene cada nodo tantas veces como su grado: muestrear de aquí es preferencial.
+    let mut connected = vec![false; n];
+    // `stubs`: cada nodo conectado aparece A = m veces más una vez por enlace preferencial recibido.
     let mut stubs: Vec<usize> = Vec::new();
+    let connect = |v: usize, connected: &mut Vec<bool>, stubs: &mut Vec<usize>| {
+        if !connected[v] {
+            connected[v] = true;
+            stubs.extend(std::iter::repeat(v).take(m));
+        }
+    };
     for i in 0..=m {
+        connect(i, &mut connected, &mut stubs);
         for j in 0..i {
             edges.push((i, j));
-            stubs.push(i);
-            stubs.push(j);
+            seen.insert((j, i));
         }
     }
-    for new in (m + 1)..n {
-        let mut targets: Vec<usize> = Vec::with_capacity(m);
-        while targets.len() < m {
-            let t = if rng.gen::<f64>() < alpha {
-                rng.gen_range(0..new)
-            } else {
-                stubs[rng.gen_range(0..stubs.len())]
-            };
-            if !targets.contains(&t) {
-                targets.push(t);
+    let mut sources: Vec<usize> = ((m + 1)..n).collect();
+    // Orden aleatorio de las fuentes (Fisher–Yates).
+    for i in (1..sources.len()).rev() {
+        sources.swap(i, rng.gen_range(0..=i));
+    }
+    for j in sources {
+        connect(j, &mut connected, &mut stubs);
+        let mut done = 0;
+        while done < m {
+            let uniform = rng.gen::<f64>() < alpha;
+            let t = if uniform { rng.gen_range(0..n) } else { stubs[rng.gen_range(0..stubs.len())] };
+            if t == j || !seen.insert((j.min(t), j.max(t))) {
+                continue;
             }
-        }
-        for t in targets {
-            edges.push((new, t));
-            stubs.push(new);
-            stubs.push(t);
+            edges.push((j, t));
+            done += 1;
+            connect(t, &mut connected, &mut stubs);
+            if !uniform {
+                stubs.push(t);
+            }
         }
     }
     Graph::from_edges(n, &edges)

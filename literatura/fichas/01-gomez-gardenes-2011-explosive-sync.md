@@ -85,24 +85,24 @@ Datos: `codigo/explosive_sync/resultados/conv/` (generados con `run_conv.sh`, 8 
 
 ## Comparación con la Fig. 1 del artículo
 
-Valores del artículo leídos a ojo de la imagen de ar5iv (error de lectura ≈ ±0.03 en λ). La imagen no se copia al repositorio. Datos propios en `codigo/explosive_sync/resultados/fig1/` (`run_fig1.sh`; 4 redes, δλ = 0.04, transitorio 40).
+Valores del artículo leídos a ojo de la imagen de ar5iv (error de lectura ≈ ±0.03 en λ y ±0.03 en r). La imagen no se copia al repositorio. Datos propios en `codigo/explosive_sync/resultados/fig1/` (`run_fig1.sh`; N = 1000, ⟨k⟩ = 6, 4 redes, δλ = 0.04, transitorio 40).
 
-| Panel | Red | Artículo (lectura aproximada) | Mis simulaciones |
+**Generador.** El artículo remite al modelo BA–ER de Gómez-Gardeñes y Moreno, Phys. Rev. E 73, 056124 (2006), [arXiv:cond-mat/0604100](https://arxiv.org/pdf/cond-mat/0604100). Lo reimplementé según su descripción: N fijo; cada nodo es una vez fuente de m enlaces; destino uniforme entre todos los nodos con probabilidad α y preferencial con 1 − α. **Supuestos míos:** clique inicial de m + 1 nodos, preferencial del modelo A con A = m, sin enlaces repetidos ni autoenlaces. No sé qué variante del modelo usó el artículo de 2011.
+
+Una primera versión mía del generador (red que crece eligiendo destinos solo entre nodos ya presentes) daba hubs mayores y resultados distintos de la Fig. 1. Los resultados de las secciones de histéresis de ER y de convergencia de ER corresponden a ese generador, no al del artículo.
+
+| Panel | Red | Artículo (lectura aproximada) | Mis simulaciones (generador de 2006) |
 |---|---|---|---|
-| (a) | α = 1, ER | Continua. Sube hacia λ ≈ 0.62; r ≈ 0.9 en λ = 1.2 | **ER de Poisson (G(N,M))**: continua, sin histéresis; r = 0.5 en λ = 0.80, r = 0.77 en λ = 1.2. **Mi generador con α = 1** (crecimiento con unión aleatoria): abrupta en λ ≈ 1.3–1.4 |
-| (b) | α = 0.6 | Continua, hacia λ ≈ 0.77 | No sincroniza en λ ≤ 1.4 (r ≈ 0.13 en 1.4) |
-| (c) | α = 0.2 | Casi abrupta, λ ≈ 1.22 | Abrupta con histéresis: caída hacia atrás en λ ≈ 1.3, salto hacia adelante en λ ≈ 1.5 |
-| (d) | α = 0, BA | Caída hacia atrás en λ ≈ 1.28; salto hacia adelante en λ ≈ 1.42 | Caída hacia atrás en λ ≈ 1.25–1.3; salto hacia adelante en λ ≈ 1.4–1.64 según la red |
+| (a) | α = 1 | Continua, sube hacia λ ≈ 0.62; r ≈ 0.9 en λ = 1.2 | Continua, sin histéresis; r = 0.44 en λ = 0.60; r = 0.92 en λ = 1.16 |
+| (b) | α = 0.6 | Continua, hacia λ ≈ 0.77 | Continua; r = 0.60 en λ = 0.80; r = 0.92 en λ = 1.36 |
+| (c) | α = 0.2 | Casi abrupta, λ ≈ 1.22; r ≈ 0.94 en λ = 1.8 | Muy empinada, r = 0.65 en λ = 1.20 y 0.84 en 1.28; r = 0.94 en λ = 1.76; sin histéresis visible |
+| (d) | α = 0, BA | Caída hacia atrás en λ ≈ 1.28 y salto hacia adelante en λ ≈ 1.42 | Caída hacia atrás entre λ = 1.20 y 1.28 (r = 0.64 en 1.28); salto hacia adelante entre 1.5 y más de 1.76 según la red |
 
-**Qué coincide:** BA (caída hacia atrás en el mismo λ; salto hacia adelante a λ algo mayor, con dispersión entre redes). Un ER de Poisson verdadero es continuo y sin histéresis, como dice el artículo.
+**Coincidencia:** en (a), (b) y (c), tanto la posición de la transición como los valores de r a λ grande coinciden con el artículo dentro del error de lectura. En (d), la rama hacia atrás coincide.
 
-**Qué no coincide:**
-- ER: la λ de la transición es unos 20 % mayor (≈ 0.75 frente a ≈ 0.62) y r crece más despacio.
-- α = 0.6 y α = 0.2: las transiciones del artículo están en λ más bajos y son más suaves que las mías.
-- **Causa probable:** mi generador para α intermedios (y α = 1) no es el mismo que el del artículo. El artículo remite a Gómez-Gardeñes y Moreno (2006), *From scale-free to Erdős–Rényi networks*, Phys. Rev. E 73, 056124 (por verificar y leer). Mi implementación hace crecer la red con m = 3 enlaces por nodo nuevo, conectando al azar con probabilidad α y de forma preferencial con 1 − α. Eso da colas de grado más pesadas que las del modelo original. No he comprobado la definición original.
-- **La "discrepancia de ER" de las secciones anteriores era un artefacto de ese generador**, no un resultado sobre el artículo. Las conclusiones de convergencia para ER (arriba) valen para mi generador y no para el ER del artículo.
+**Diferencia que queda:** en (d) mi rama hacia adelante salta más tarde que la del artículo (1.42) y con gran dispersión entre redes (desviación ≈ 0.38 en λ = 1.76: algunas redes aún no habían saltado). El artículo muestra una sola red. Con transitorio corto, el estado incoherente metaestable tarda en desestabilizarse. Falta comprobar con transitorio mayor y con un barrido más fino.
 
-**Siguiente paso:** localizar y leer el modelo de 2006 (definición exacta y distribución de grados), reimplementarlo y repetir los paneles (a)–(c).
+**Pendiente:** Fig. 3 (γ = 2.4–3.3 y frecuencias aleatorias), Fig. 4b (hasta K = 70, ya medida de forma parcial) y la comparación de la rama hacia adelante de (d) con mayor transitorio.
 
 ## Posibles aportes (a valorar, sin afirmar novedad)
 
