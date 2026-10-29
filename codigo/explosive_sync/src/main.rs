@@ -65,6 +65,17 @@ impl Graph {
 /// Cada nodo nuevo añade `m` enlaces; <k> ≈ 2m.
 fn ba_er(n: usize, m: usize, alpha: f64, rng: &mut ChaCha8Rng) -> Graph {
     let mut edges: Vec<(usize, usize)> = Vec::new();
+    if alpha < 0.0 {
+        // Erdős–Rényi G(N, M) con M = N·m enlaces (⟨k⟩ = 2m), degrees de Poisson.
+        let mut seen = std::collections::HashSet::new();
+        while edges.len() < n * m {
+            let (a, b) = (rng.gen_range(0..n), rng.gen_range(0..n));
+            if a != b && seen.insert((a.min(b), a.max(b))) {
+                edges.push((a, b));
+            }
+        }
+        return Graph::from_edges(n, &edges);
+    }
     // `stubs` contiene cada nodo tantas veces como su grado: muestrear de aquí es preferencial.
     let mut stubs: Vec<usize> = Vec::new();
     for i in 0..=m {

@@ -83,6 +83,27 @@ Datos: `codigo/explosive_sync/resultados/conv/` (generados con `run_conv.sh`, 8 
 
 **Conclusión provisional:** en BA la histéresis es robusta frente a dt y transitorio. En ER, parte de la histéresis era un efecto del transitorio corto, pero queda un resto que no se explica con lo medido. No se puede afirmar todavía ni que ER sea continuo ni que no lo sea. Falta N mayor con transitorio largo, y comparar con la Fig. 1a del artículo.
 
+## Comparación con la Fig. 1 del artículo
+
+Valores del artículo leídos a ojo de la imagen de ar5iv (error de lectura ≈ ±0.03 en λ). La imagen no se copia al repositorio. Datos propios en `codigo/explosive_sync/resultados/fig1/` (`run_fig1.sh`; 4 redes, δλ = 0.04, transitorio 40).
+
+| Panel | Red | Artículo (lectura aproximada) | Mis simulaciones |
+|---|---|---|---|
+| (a) | α = 1, ER | Continua. Sube hacia λ ≈ 0.62; r ≈ 0.9 en λ = 1.2 | **ER de Poisson (G(N,M))**: continua, sin histéresis; r = 0.5 en λ = 0.80, r = 0.77 en λ = 1.2. **Mi generador con α = 1** (crecimiento con unión aleatoria): abrupta en λ ≈ 1.3–1.4 |
+| (b) | α = 0.6 | Continua, hacia λ ≈ 0.77 | No sincroniza en λ ≤ 1.4 (r ≈ 0.13 en 1.4) |
+| (c) | α = 0.2 | Casi abrupta, λ ≈ 1.22 | Abrupta con histéresis: caída hacia atrás en λ ≈ 1.3, salto hacia adelante en λ ≈ 1.5 |
+| (d) | α = 0, BA | Caída hacia atrás en λ ≈ 1.28; salto hacia adelante en λ ≈ 1.42 | Caída hacia atrás en λ ≈ 1.25–1.3; salto hacia adelante en λ ≈ 1.4–1.64 según la red |
+
+**Qué coincide:** BA (caída hacia atrás en el mismo λ; salto hacia adelante a λ algo mayor, con dispersión entre redes). Un ER de Poisson verdadero es continuo y sin histéresis, como dice el artículo.
+
+**Qué no coincide:**
+- ER: la λ de la transición es unos 20 % mayor (≈ 0.75 frente a ≈ 0.62) y r crece más despacio.
+- α = 0.6 y α = 0.2: las transiciones del artículo están en λ más bajos y son más suaves que las mías.
+- **Causa probable:** mi generador para α intermedios (y α = 1) no es el mismo que el del artículo. El artículo remite a Gómez-Gardeñes y Moreno (2006), *From scale-free to Erdős–Rényi networks*, Phys. Rev. E 73, 056124 (por verificar y leer). Mi implementación hace crecer la red con m = 3 enlaces por nodo nuevo, conectando al azar con probabilidad α y de forma preferencial con 1 − α. Eso da colas de grado más pesadas que las del modelo original. No he comprobado la definición original.
+- **La "discrepancia de ER" de las secciones anteriores era un artefacto de ese generador**, no un resultado sobre el artículo. Las conclusiones de convergencia para ER (arriba) valen para mi generador y no para el ER del artículo.
+
+**Siguiente paso:** localizar y leer el modelo de 2006 (definición exacta y distribución de grados), reimplementarlo y repetir los paneles (a)–(c).
+
 ## Posibles aportes (a valorar, sin afirmar novedad)
 
 - Código abierto y reproducible con semilla del protocolo completo, que el artículo no detalla.
