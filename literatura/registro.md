@@ -31,7 +31,7 @@ Estado: `por verificar` → `verificado` (confirmado en fuente, 2026-10-28) → 
 
 | # | Referencia | DOI | Tema | Estado |
 |---|---|---|---|---|
-| 10 | Arenas, Cota, Gómez-Gardeñes, Gómez, Granell, Matamalas, Soriano-Paños, Steinegger, "Modeling the Spatiotemporal Epidemic Spreading of COVID-19 and the Impact of Mobility and Social Distancing Interventions", Phys. Rev. X 10, 041055 (2020) | 10.1103/PhysRevX.10.041055 | Metapoblaciones MMCA estratificadas por edad, España a nivel de municipio. Preprint: medRxiv 10.1101/2020.03.21.20040022 | verificado (autores, volumen y nº de artículo en Crossref); **no se ha leído**. Gómez-Gardeñes es de la Universidad de Zaragoza (BIFI) |
+| 10 | Arenas, Cota, Gómez-Gardeñes, Gómez, Granell, Matamalas, Soriano-Paños, Steinegger, "Modeling the Spatiotemporal Epidemic Spreading of COVID-19 and the Impact of Mobility and Social Distancing Interventions", Phys. Rev. X 10, 041055 (2020) | 10.1103/PhysRevX.10.041055 | Metapoblaciones MMCA estratificadas por edad, España a nivel de municipio. Preprint: medRxiv 10.1101/2020.03.21.20040022 | verificado (autores, volumen y nº de artículo en Crossref); leído a fondo ([ficha](fichas/02-arenas-2020-covid-metapoblaciones.md)). Gómez-Gardeñes, Cota, Granell y Soriano-Paños son del BIFI (Zaragoza) según las afiliaciones del artículo; código oficial en Julia (AGPL-3) |
 
 Nota: se descartó arXiv:2005.05853 ("Lessons from being challenged by COVID-19", Tagliazucchi et al.), que había aparecido en una búsqueda: no tiene relación con el grupo.
 
