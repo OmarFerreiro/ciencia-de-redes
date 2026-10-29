@@ -45,4 +45,4 @@ Los benchmarks (Rust, C++, Python) están en `codigo/benchmark/` (ver su README)
 
 ## Licencia
 
-Pendiente de decidir.
+MIT (ver `LICENSE`).

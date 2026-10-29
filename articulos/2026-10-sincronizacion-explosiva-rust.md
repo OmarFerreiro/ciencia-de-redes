@@ -2,8 +2,6 @@
 
 *Serie "Ciencia de Redes": lectura y reproducción de trabajos del grupo BIFI/COSNET (Universidad de Zaragoza).*
 
-> **Borrador.** Antes de publicar: (1) hacer público el repositorio y sustituir el marcador del enlace, (2) poner una etiqueta (`v0.1`) en el commit que se cite, (3) revisar cifras y citas, (4) decidir si se adjunta la gráfica `codigo/explosive_sync/resultados/conv_final/d_base.svg` (BA, 8 redes; es de mis simulaciones, las figuras del artículo original no se reproducen). Decisión tuya: la introducción menciona que se usaron herramientas de IA para leer, programar y revisar; es cierto y encaja con el tema, pero puedes quitarlo o ampliarlo.
-
 ---
 
 Últimamente parece que las nuevas tecnologías sirven sobre todo para producir contenido: más textos, más imágenes, más vídeos, casi siempre iguales. Sin embargo, leo pocas referencias a su utilidad para la comprensión: de un problema científico, de una técnica, de cómo funciona algo por dentro.
@@ -23,7 +21,7 @@ El artículo es "Explosive Synchronization Transitions in Scale-free Networks", 
 
 **Rendimiento.** Rust y C++ rinden igual; Python con NumPy, unas 2,4 veces más lento; Python puro, unas 20 (una máquina, N = 1000, un hilo). Detalles y limitaciones en el repositorio.
 
-**Código y datos:** <ENLACE AL REPOSITORIO: pendiente de hacerlo público> · etiqueta `v0.1`
+**Código y datos:** https://github.com/OmarFerreiro/ciencia-de-redes · etiqueta `v0.1`
 
 Siguiente paso: la Fig. 3. Si alguien del grupo ve algo mal en mi lectura, me encantará que me lo diga.
 
