@@ -16,7 +16,7 @@ Modelo de metapoblaciones por municipios, con tres grupos de edad y diez compart
 - **Contagio (Ecs. 12–19):** Π = (1 − p)·P_i + p·Σ_j R_ij·P_j (primero en la residencia, luego en el destino de movilidad). P depende de β_A, β_I, de los contactos por persona ⟨k⟩, de una función de densidad f(x) = 1 + (1 − e^(−ξx)), de la matriz de contactos entre edades C y de los infecciosos presentes en el municipio (tras el desplazamiento). Solo los adultos se mueven entre municipios: jóvenes y mayores no salen del suyo (R = δ_ij).
 - **Confinamiento (Ecs. 20–27):** fracción confinada κ₀(t), distanciamiento δ en los no confinados, y permeabilidad de los hogares φ. Se añade un compartimento CH (confinados en el hogar).
 - **Calibración:** ABC (approximate Bayesian computation) con muertes diarias hasta el 8 de abril de 2020. Se calibran β_I, η, α, μ, φ y δ; el resto sale de la literatura. κ₀(t) se toma de la reducción de movilidad laboral del INE (base: 19 de noviembre de 2019).
-- **Parámetros calibrados (Tablas II y IV):** β_I = 0.075, β_A = 0.5·β_I (supuesto), η = 2.444 d⁻¹, α⁻¹ = 2.756 d (M, O) y 1/5.671 d (Y), μ⁻¹ = 3.915 d (M, O) y 1 d (Y), φ = 0.174, δ = 0.207. Contactos medios ⟨k⟩ = (11.8, 13.3, 6.8); ξ = 0.01; tamaño medio del hogar σ = 2.5.
+- **Parámetros calibrados (Tablas II y IV):** β_I = 0.075, β_A = 0.5·β_I (supuesto), η⁻¹ = 2.444 d, α⁻¹ = 2.756 d (M, O) y 5.671 d (Y), μ⁻¹ = 3.915 d (M, O) y 1 d (Y), φ = 0.174, δ = 0.207. Contactos medios ⟨k⟩ = (11.8, 13.3, 6.8); ξ = 0.01; tamaño medio del hogar σ = 2.5.
 
 ## Resultados analíticos
 
@@ -49,3 +49,16 @@ Modelo de metapoblaciones por municipios, con tres grupos de edad y diez compart
 - Cómo se siembran los primeros casos y la condición inicial, y la forma exacta de la función de densidad f.
 - Material suplementario (escenarios de contención).
 - Disponibilidad y formato de los datos del INE y de las matrices de contactos.
+
+## Nota sobre unidades de las tablas (comprobada)
+
+Las Tablas II y III rotulan η, α, μ, ζ, λ, ψ y χ como "days⁻¹", pero los valores son **duraciones en días** (inversas de las tasas). Comprobación con el propio texto: η⁻¹ + α⁻¹ = 2.444 + 2.756 = 5.2 d (periodo de incubación citado); α⁻¹ + μ⁻¹ es 6.671 d tanto para M (2.756 + 3.915) como para Y (5.671 + 1), que es lo que dice el texto al repartir los días del joven entre A e I; μ⁻¹ + ζ⁻¹ = 3.915 + 7.084 = 11.0 d y μ⁻¹ + λ⁻¹ = 3.915 + 4.084 = 8.0 d, los retrasos de 11 y 8 días citados. En el código, la tasa por paso es 1/duración (por ejemplo, μ_Y = 1).
+
+## Reproducción en Rust (primer paso, 2026-10-29)
+
+Código: `codigo/covid_mmca/` (núcleo MMCA con datos sintéticos; detalles en su README).
+
+- **Conservación:** suma de compartimentos = 1 en cada parche y edad, error ≤ 2.4·10⁻¹⁵ en 200 días.
+- **κ crítico (Ec. 51) frente a simulación,** parche único de adultos: 0.563 con la β del artículo, 0.578 simulado; con β efectiva −ln(1−β), 0.578 (coinciden a 10⁻³). La Ec. 51 es una aproximación válida salvo ese 4 % de la infectividad.
+- **Escenario sintético:** con κ = 0.6 desde el día 30, el pico de incidencia se alcanza el día 30 y después cae (régimen de "doblar" la curva, cualitativamente como la Fig. 5b). No se compara con datos reales.
+- **Pendiente:** contrastar las Ecs. 13, 14 y 23 con el PDF original; R(t) general (Ec. 42); sembrado y condiciones iniciales; datos del INE; cotejo con el código en Julia.
