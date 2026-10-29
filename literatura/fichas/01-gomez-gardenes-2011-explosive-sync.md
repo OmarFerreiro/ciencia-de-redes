@@ -63,6 +63,26 @@ Datos: `codigo/explosive_sync/resultados/starscan.csv` (generados con `run_stars
 - **r en λ_c:** el artículo da K/(K+1) (Ec. 10, que calcula r como promedio de cosenos). El módulo exacto es √(K²+1)/(K+1), que es algo mayor (0.5 % para K = 10, ya despreciable para K ≥ 30). La simulación mide el módulo, así que queda por encima de ambos. No es un error del artículo: es una cuestión de definición. Se puede mencionar como matiz, no como corrección.
 - **Histéresis:** la rama hacia adelante se engancha en λ = 0.85 (K = 5), 1.56 (K = 10) y 2.34 (K = 20), mientras que λ_c solo sube de 0.67 a 0.90. La histéresis crece con K, de acuerdo con la descripción de la Fig. 4b. Para K ≥ 30 la rama hacia adelante no se engancha antes de λ = 3 (no se ha medido).
 
+## Control de convergencia (ER y BA)
+
+Datos: `codigo/explosive_sync/resultados/conv/` (generados con `run_conv.sh`, 8 redes por caso, δλ = 0.02). Valores de r (media entre redes), rama hacia adelante / rama hacia atrás:
+
+| λ | ER base (N=1000) | ER transitorio ×5 | ER dt/2 | ER N=4000 |
+|---|---|---|---|---|
+| 1.28 | 0.109 / 0.245 | 0.096 / 0.170 | 0.109 / 0.245 | 0.048 / 0.055 |
+| 1.32 | 0.201 / 0.580 | 0.290 / 0.536 | 0.201 / 0.580 | 0.066 / 0.571 |
+| 1.36 | 0.537 / 0.672 | 0.671 / 0.674 | 0.537 / 0.672 | 0.092 / 0.675 |
+| 1.40 | 0.765 / 0.765 | 0.765 / 0.766 | 0.765 / 0.765 | 0.168 / 0.735 |
+| 1.44 | 0.806 / 0.806 | 0.806 / 0.806 | 0.806 / 0.806 | 0.533 / 0.783 |
+| 1.48 | 0.828 / 0.828 | 0.828 / 0.828 | 0.828 / 0.828 | 0.816 / 0.816 |
+
+- **Paso de integración:** con dt a la mitad los resultados son iguales en los tres decimales mostrados. Para ER, el paso no es la causa.
+- **Transitorio:** con transitorio ×5 la rama hacia adelante se acerca a la de vuelta (en λ = 1.36 pasa de 0.54 a 0.67) y la histéresis se estrecha, pero no desaparece del todo: en λ = 1.32 sigue habiendo 0.29 frente a 0.54. Con transitorio corto la histéresis de ER estaba **sobrestimada**.
+- **Tamaño del sistema:** con N = 4000 y el transitorio corto (40), la histéresis es **más ancha** (λ ≈ 1.32–1.48) que con N = 1000. Esa ejecución no es comparable a la del transitorio largo, porque cerca de la transición el sistema relaja lentamente y 40 unidades pueden no bastar. Falta N = 4000 con transitorio largo (unos 45 min estimados).
+- **BA:** con transitorio ×5 la rama hacia atrás no cambia y la de adelante salta en λ = 1.64 en todas las redes (desviación entre redes ≈ 0 a partir de ahí). La histéresis de BA (λ ≈ 1.3–1.64) es robusta.
+
+**Conclusión provisional:** en BA la histéresis es robusta frente a dt y transitorio. En ER, parte de la histéresis era un efecto del transitorio corto, pero queda un resto que no se explica con lo medido. No se puede afirmar todavía ni que ER sea continuo ni que no lo sea. Falta N mayor con transitorio largo, y comparar con la Fig. 1a del artículo.
+
 ## Posibles aportes (a valorar, sin afirmar novedad)
 
 - Código abierto y reproducible con semilla del protocolo completo, que el artículo no detalla.
