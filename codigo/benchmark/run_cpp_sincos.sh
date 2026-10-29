@@ -1,4 +1,4 @@
-cd /mnt/c/Users/jorge/proyectos/ciencia-de-redes/codigo/benchmark
+cd "$(dirname "$0")"
 g++ -O3 -std=c++17 -DUSE_SINCOS bench.cpp -o $HOME/bench/bench_cpp_sincos
 G=$HOME/bench/red.txt
 echo "# C++ con sincos (una llamada para seno y coseno, como hace Rust con sin_cos)"

@@ -1,7 +1,7 @@
 # Control de convergencia con el generador del modelo de 2006 (8 redes por caso, dl = 0.02):
 # base (transitorio 40, dt estándar), transitorio x5 y dt/2, para α = 1 (panel a) y α = 0 (BA, panel d).
 source ~/.cargo/env
-cd /mnt/c/Users/jorge/proyectos/ciencia-de-redes/codigo/explosive_sync
+cd "$(dirname "$0")"
 CARGO_TARGET_DIR=$HOME/rt/es cargo build --release 2>&1 | tail -1
 B=$HOME/rt/es/release/explosive_sync
 R=resultados/conv_final

@@ -22,26 +22,19 @@ Kuramoto sobre redes cuya frecuencia natural es el grado del nodo (ω_i = k_i). 
 
 ## Reproducción en Rust
 
-Código: `codigo/explosive_sync/` (RK4, grafos CSR, ChaCha8 con semilla, hilos de std). Datos y gráficas en `codigo/explosive_sync/resultados/`. Se ejecuta en WSL2 (Ubuntu), porque Windows bloqueaba los ejecutables nuevos con una política de control de aplicaciones.
+Código: `codigo/explosive_sync/` (RK4, grafos CSR, ChaCha8 con semilla, hilos de la biblioteca estándar). Datos y gráficas en `codigo/explosive_sync/resultados/`.
 
-**Condiciones:** N = 1000, ⟨k⟩ ≈ 6 (m = 3), 8 redes por caso (semillas 1 a 8), δλ = 0.02 entre λ = 1.0 y 2.2, transitorio 40 y promedio 10 unidades de tiempo, dt ≈ 1/(λ·k_max) (límite 0.01).
+**Condiciones comunes:** N = 1000, ⟨k⟩ = 6 (m = 3), ω_i = k_i, λ sin normalizar, continuación adiabática hacia adelante y hacia atrás. Transitorio de 40 y promedio de 10 unidades de tiempo (salvo que se indique), dt = min(0.01, 1/(λ·k_max)).
 
-| Caso | Resultado |
-|---|---|
-| **Estrella K = 10** (λ_c = 0.8182 y r_c = 0.9091 según el artículo) | Rama hacia atrás: el hub queda enganchado (frecuencia efectiva = Ω = 1.8182) para λ ≥ 0.82 y no lo está en λ = 0.80. Coincide con λ_c = 0.818. En λ = 0.82, r = 0.920 (r_c = 0.909 en λ_c exacto). Rama hacia adelante: el hub se engancha en λ ≈ 1.60, y hay histéresis. |
-| **BA (α = 0)**, ω = k | Rama hacia atrás: r = 0.84 ya en λ = 1.3, y cae a 0.06 en λ = 1.2. Rama hacia adelante: sube entre λ = 1.4 y 1.7, y el punto de salto varía de red a red (desviación entre redes ≈ 0.27–0.37 en el salto). Hay **histéresis** clara, de unos 0.3 en λ. Ver `ba_alpha0_fine.svg`. |
-| **ER (α = 1)**, ω = k | Subida rápida entre λ = 1.3 y 1.5. Con δλ = 0.02 aparece una histéresis pequeña (λ = 1.3: r = 0.19 hacia adelante y 0.48 hacia atrás; ambas ramas coinciden desde λ = 1.5). Ver `er_alpha1_fine.svg`. |
-
-**Lo que se concluye:**
-- La estrella reproduce el resultado analítico: el desenganche del hub ocurre en λ_c con la resolución usada (δλ = 0.02).
-- En BA hay histéresis y el salto es abrupto, como en el artículo.
-- **Diferencia con el artículo:** el artículo describe ER como de segundo orden (curvas que coinciden). En nuestras simulaciones ER sube de forma muy empinada y muestra una histéresis pequeña en una ventana estrecha. No sabemos si es un efecto del tamaño finito, del tiempo de transitorio corto (cerca de la transición el sistema tarda más en relajar) o de otra causa. Hay que comprobarlo antes de afirmar nada.
+**Qué se comparó y dónde se detalla:**
+- La estrella frente a la teoría exacta: sección siguiente.
+- Los cuatro paneles de la Fig. 1: sección "Comparación con la Fig. 1".
+- El control de dt y del transitorio: sección "Control de convergencia con el generador final".
 
 **Pendiente:**
-- Convergencia numérica: repetir con TTRANS mayor y con DTF menor, y comprobar que no cambia nada.
-- Más redes y N mayor para ver la dependencia con el tamaño.
-- Comparar las curvas con la Fig. 1 del artículo en valores concretos de λ (aún no se ha hecho con los datos de la figura).
-- Barrer γ y las correlaciones parciales (Fig. 3 y notas 24 y 27).
+- Guardar el λ de salto de cada red en BA y comparar su distribución con el valor publicado.
+- Fig. 3 (γ = 2.4–3.3 y frecuencias aleatorias), Fig. 4b (rama hacia adelante para K = 20–70) y las notas 24 y 27 (ω ~ k^a, correlación parcial).
+- N mayor con transitorio largo.
 
 ## Comparación con la teoría de la estrella (K = 5 a 70)
 
@@ -63,33 +56,13 @@ Datos: `codigo/explosive_sync/resultados/starscan.csv` (generados con `run_stars
 - **r en λ_c:** el artículo da K/(K+1) (Ec. 10, que calcula r como promedio de cosenos). El módulo exacto es √(K²+1)/(K+1), que es algo mayor (0.5 % para K = 10, ya despreciable para K ≥ 30). La simulación mide el módulo, así que queda por encima de ambos. No es un error del artículo: es una cuestión de definición. Se puede mencionar como matiz, no como corrección.
 - **Histéresis:** la rama hacia adelante se engancha en λ = 0.85 (K = 5), 1.56 (K = 10) y 2.34 (K = 20), mientras que λ_c solo sube de 0.67 a 0.90. La histéresis crece con K, de acuerdo con la descripción de la Fig. 4b. Para K ≥ 30 la rama hacia adelante no se engancha antes de λ = 3 (no se ha medido).
 
-## Control de convergencia (ER y BA)
-
-Datos: `codigo/explosive_sync/resultados/conv/` (generados con `run_conv.sh`, 8 redes por caso, δλ = 0.02). Valores de r (media entre redes), rama hacia adelante / rama hacia atrás:
-
-| λ | ER base (N=1000) | ER transitorio ×5 | ER dt/2 | ER N=4000 |
-|---|---|---|---|---|
-| 1.28 | 0.109 / 0.245 | 0.096 / 0.170 | 0.109 / 0.245 | 0.048 / 0.055 |
-| 1.32 | 0.201 / 0.580 | 0.290 / 0.536 | 0.201 / 0.580 | 0.066 / 0.571 |
-| 1.36 | 0.537 / 0.672 | 0.671 / 0.674 | 0.537 / 0.672 | 0.092 / 0.675 |
-| 1.40 | 0.765 / 0.765 | 0.765 / 0.766 | 0.765 / 0.765 | 0.168 / 0.735 |
-| 1.44 | 0.806 / 0.806 | 0.806 / 0.806 | 0.806 / 0.806 | 0.533 / 0.783 |
-| 1.48 | 0.828 / 0.828 | 0.828 / 0.828 | 0.828 / 0.828 | 0.816 / 0.816 |
-
-- **Paso de integración:** con dt a la mitad los resultados son iguales en los tres decimales mostrados. Para ER, el paso no es la causa.
-- **Transitorio:** con transitorio ×5 la rama hacia adelante se acerca a la de vuelta (en λ = 1.36 pasa de 0.54 a 0.67) y la histéresis se estrecha, pero no desaparece del todo: en λ = 1.32 sigue habiendo 0.29 frente a 0.54. Con transitorio corto la histéresis de ER estaba **sobrestimada**.
-- **Tamaño del sistema:** con N = 4000 y el transitorio corto (40), la histéresis es **más ancha** (λ ≈ 1.32–1.48) que con N = 1000. Esa ejecución no es comparable a la del transitorio largo, porque cerca de la transición el sistema relaja lentamente y 40 unidades pueden no bastar. Falta N = 4000 con transitorio largo (unos 45 min estimados).
-- **BA:** con transitorio ×5 la rama hacia atrás no cambia y la de adelante salta en λ = 1.64 en todas las redes (desviación entre redes ≈ 0 a partir de ahí). La histéresis de BA (λ ≈ 1.3–1.64) es robusta.
-
-**Conclusión provisional:** en BA la histéresis es robusta frente a dt y transitorio. En ER, parte de la histéresis era un efecto del transitorio corto, pero queda un resto que no se explica con lo medido. No se puede afirmar todavía ni que ER sea continuo ni que no lo sea. Falta N mayor con transitorio largo, y comparar con la Fig. 1a del artículo.
-
 ## Comparación con la Fig. 1 del artículo
 
 Valores del artículo leídos a ojo de la imagen de ar5iv (error de lectura ≈ ±0.03 en λ y ±0.03 en r). La imagen no se copia al repositorio. Datos propios en `codigo/explosive_sync/resultados/fig1/` (`run_fig1.sh`; N = 1000, ⟨k⟩ = 6, 4 redes, δλ = 0.04, transitorio 40).
 
 **Generador.** El artículo remite al modelo BA–ER de Gómez-Gardeñes y Moreno, Phys. Rev. E 73, 056124 (2006), [arXiv:cond-mat/0604100](https://arxiv.org/pdf/cond-mat/0604100). Lo reimplementé según su descripción: N fijo; cada nodo es una vez fuente de m enlaces; destino uniforme entre todos los nodos con probabilidad α y preferencial con 1 − α. **Supuestos míos:** clique inicial de m + 1 nodos, preferencial del modelo A con A = m, sin enlaces repetidos ni autoenlaces. No sé qué variante del modelo usó el artículo de 2011.
 
-Una primera versión mía del generador (red que crece eligiendo destinos solo entre nodos ya presentes) daba hubs mayores y resultados distintos de la Fig. 1. Los resultados de las secciones de histéresis de ER y de convergencia de ER corresponden a ese generador, no al del artículo.
+Una primera versión mía del generador (red que crece eligiendo destinos solo entre nodos ya presentes) daba hubs mayores y resultados distintos de la Fig. 1: una red "aleatoria" con transición abrupta y al doble de λ. Los resultados de esa primera versión no están en este repositorio, porque no corresponden al modelo del artículo.
 
 | Panel | Red | Artículo (lectura aproximada) | Mis simulaciones (generador de 2006) |
 |---|---|---|---|
@@ -121,6 +94,6 @@ Datos: `codigo/explosive_sync/resultados/conv_final/` (generados con `run_conv_f
 
 ## Notas técnicas
 
-- El paso dt se limita por la rigidez del nodo hub (dt·λ·k_max ≈ 1). Con senos y cosenos precalculados el barrido grueso de BA bajó de unos 8 minutos a 2. El barrido fino (61 puntos, 8 redes, 3 casos) tarda unos 15–20 minutos en 4 núcleos.
-- Las rutas largas de Windows rompen el enlazador y `git init` en la carpeta temporal. Se compila en WSL con `CARGO_TARGET_DIR=$HOME/rt/es` y el código se lee desde `/mnt/c/...`.
-- `run_fine.sh` reproduce todos los datos y las gráficas de esta ficha.
+- El paso dt se limita por la rigidez del nodo hub (dt·λ·k_max ≈ 1). Con senos y cosenos precalculados, un barrido grueso de BA (25 puntos, una red) bajó de unos 8 minutos a 2. Los barridos de convergencia (8 redes, 41 puntos, 3 variantes) tardan de 2 a 26 minutos cada uno en 4 núcleos.
+- Se ejecuta en WSL2 (Ubuntu): Windows bloqueaba los ejecutables recién compilados con su política de control de aplicaciones. Se compila con `CARGO_TARGET_DIR=$HOME/rt/es cargo build --release`.
+- Los scripts `run_fig1.sh`, `run_conv_final.sh` y `run_starscan.sh` (en `codigo/explosive_sync/`) reproducen los datos de esta ficha.

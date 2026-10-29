@@ -1,4 +1,4 @@
-cd /mnt/c/Users/jorge/proyectos/ciencia-de-redes/codigo/benchmark
+cd "$(dirname "$0")"
 P=$HOME/bench/venv/bin/python
 G=$HOME/bench/red.txt
 echo "# NumPy+SciPy: $($P -c 'import numpy,scipy;print("numpy",numpy.__version__,"scipy",scipy.__version__)')"

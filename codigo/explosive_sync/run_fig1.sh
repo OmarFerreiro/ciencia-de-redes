@@ -1,7 +1,7 @@
 # Comparación con la Fig. 1 del artículo (ventanas de λ de cada panel), con el generador del modelo
 # BA–ER de 2006 (PRE 73, 056124). 4 redes por caso, paso 0.04, N=1000, <k>=6.
 source ~/.cargo/env
-cd /mnt/c/Users/jorge/proyectos/ciencia-de-redes/codigo/explosive_sync
+cd "$(dirname "$0")"
 CARGO_TARGET_DIR=$HOME/rt/es cargo build --release 2>&1 | tail -1
 B=$HOME/rt/es/release/explosive_sync
 R=resultados/fig1

@@ -28,3 +28,21 @@ Estudio gradual de los trabajos publicados por el grupo de Biocomputación y Fí
 - Los artículos dicen claramente qué es del grupo original y qué es reproducción o aportación nuestra.
 - Los resultados se publican con semilla aleatoria, versión del código y parámetros, para que se puedan reproducir.
 - No se afirma que algo sea "inédito" sin una revisión de literatura que lo respalde.
+
+## Reproducir los resultados
+
+Requisitos: Rust (edición 2021) en Linux o WSL2. Desde `codigo/explosive_sync/`:
+
+```bash
+CARGO_TARGET_DIR=$HOME/rt/es cargo build --release
+bash run_starscan.sh      # grafo estrella, K = 5..70
+bash run_fig1.sh          # paneles de la Fig. 1
+bash run_conv_final.sh    # control de convergencia
+bash run_plots.sh         # gráficas SVG
+```
+
+Los benchmarks (Rust, C++, Python) están en `codigo/benchmark/` (ver su README). Los resultados y sus condiciones se detallan en `literatura/fichas/01-gomez-gardenes-2011-explosive-sync.md`.
+
+## Licencia
+
+Pendiente de decidir.

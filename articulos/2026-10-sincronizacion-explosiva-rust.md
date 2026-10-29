@@ -2,7 +2,7 @@
 
 *Serie "Ciencia de Redes": lectura y reproducción de trabajos del grupo BIFI/COSNET (Universidad de Zaragoza).*
 
-> **Borrador.** Antes de publicar: (1) hacer público el repositorio y sustituir el marcador del enlace, (2) poner una etiqueta (`v0.1`) en el commit que se cite, (3) revisar cifras y citas, (4) decidir si se adjunta la gráfica `ba_alpha0_fine.svg` (es de mis simulaciones; las figuras del artículo original no se reproducen). Decisión tuya: la introducción menciona que se usaron herramientas de IA para leer, programar y revisar; es cierto y encaja con el tema, pero puedes quitarlo o ampliarlo.
+> **Borrador.** Antes de publicar: (1) hacer público el repositorio y sustituir el marcador del enlace, (2) poner una etiqueta (`v0.1`) en el commit que se cite, (3) revisar cifras y citas, (4) decidir si se adjunta la gráfica `codigo/explosive_sync/resultados/conv_final/d_base.svg` (BA, 8 redes; es de mis simulaciones, las figuras del artículo original no se reproducen). Decisión tuya: la introducción menciona que se usaron herramientas de IA para leer, programar y revisar; es cierto y encaja con el tema, pero puedes quitarlo o ampliarlo.
 
 ---
 
