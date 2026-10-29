@@ -100,9 +100,17 @@ Una primera versión mía del generador (red que crece eligiendo destinos solo e
 
 **Coincidencia:** en (a), (b) y (c), tanto la posición de la transición como los valores de r a λ grande coinciden con el artículo dentro del error de lectura. En (d), la rama hacia atrás coincide.
 
-**Diferencia que queda:** en (d) mi rama hacia adelante salta más tarde que la del artículo (1.42) y con gran dispersión entre redes (desviación ≈ 0.38 en λ = 1.76: algunas redes aún no habían saltado). El artículo muestra una sola red. Con transitorio corto, el estado incoherente metaestable tarda en desestabilizarse. Falta comprobar con transitorio mayor y con un barrido más fino.
+**Diferencia que queda (matizada tras el control de convergencia de abajo):** en (d) el salto hacia adelante no ocurre en el mismo λ en todas mis redes: según las medias y desviaciones, unas redes saltan hacia λ ≈ 1.44 y otras hasta λ ≈ 1.64. El valor del artículo (1.42) corresponde a una sola red y queda en el borde inferior de ese intervalo. No guardé el salto de cada red por separado, así que esto es una inferencia a partir de las medias y desviaciones, no una medida directa.
 
-**Pendiente:** Fig. 3 (γ = 2.4–3.3 y frecuencias aleatorias), Fig. 4b (hasta K = 70, ya medida de forma parcial) y la comparación de la rama hacia adelante de (d) con mayor transitorio.
+**Pendiente:** Fig. 3 (γ = 2.4–3.3 y frecuencias aleatorias), Fig. 4b (hasta K = 70, ya medida de forma parcial) y guardar el λ de salto de cada red por separado en BA, para comparar su distribución con el valor publicado.
+
+## Control de convergencia con el generador final
+
+Datos: `codigo/explosive_sync/resultados/conv_final/` (generados con `run_conv_final.sh`; N = 1000, ⟨k⟩ = 6, 8 redes por caso, δλ = 0.02). Variantes: base (transitorio 40, dt estándar), transitorio ×5 (200) y dt/2.
+
+- **α = 1 (panel a), λ de 0.4 a 0.9:** dt/2 da las mismas curvas que la base (iguales en los tres decimales mostrados). Con transitorio ×5 las diferencias son de 0.02 como mucho (r = 0.558 frente a 0.555 en λ = 0.62), por debajo de la dispersión entre redes. Las ramas hacia adelante y hacia atrás coinciden: no hay histéresis.
+- **BA (α = 0), λ de 1.1 a 1.9:** la rama hacia atrás es la misma en las tres variantes (r ≈ 0.85 en λ = 1.32, 0.89 en 1.40). Su caída se produce entre λ = 1.24 y 1.32 en todas; el valor de r en λ = 1.28 varía entre 0.30 y 0.60 según la variante, con desviación grande entre redes. La rama hacia adelante tiene saltos en λ ≈ 1.44–1.64 según la red; con transitorio ×5 la sincronización completa se alcanza algo antes (λ ≈ 1.60 frente a 1.68), lo que concuerda con un estado incoherente metaestable que se desestabiliza con el tiempo.
+- **Conclusión:** para α = 1 los resultados no dependen del paso ni del transitorio dentro de lo medido. Para BA, la rama hacia atrás es robusta, y la posición del salto hacia adelante depende de la red y del transitorio.
 
 ## Posibles aportes (a valorar, sin afirmar novedad)
 
