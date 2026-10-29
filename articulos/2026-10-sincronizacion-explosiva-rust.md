@@ -2,11 +2,15 @@
 
 *Serie "Ciencia de Redes": lectura y reproducción de trabajos del grupo BIFI/COSNET (Universidad de Zaragoza).*
 
-> **Borrador.** Antes de publicar: (1) hacer público el repositorio y sustituir el marcador del enlace, (2) poner una etiqueta (`v0.1`) en el commit que se cite, (3) revisar cifras y citas, (4) decidir si se adjunta la gráfica `ba_alpha0_fine.svg` (es de mis simulaciones; las figuras del artículo original no se reproducen). Palabras: ≈ 550 (el texto de LinkedIn rinde mejor con menos; candidatos a recortar: el párrafo de rendimiento y el de "qué aporta").
+> **Borrador.** Antes de publicar: (1) hacer público el repositorio y sustituir el marcador del enlace, (2) poner una etiqueta (`v0.1`) en el commit que se cite, (3) revisar cifras y citas, (4) decidir si se adjunta la gráfica `ba_alpha0_fine.svg` (es de mis simulaciones; las figuras del artículo original no se reproducen). Palabras: ≈ 620 (el texto de LinkedIn rinde mejor con menos; candidatos a recortar: el párrafo de rendimiento y el de "qué aporta"). Decisión tuya: la introducción menciona que se usaron herramientas de IA para leer, programar y revisar; es cierto, y encaja con el tema, pero puedes quitarlo o ampliarlo.
 
 ---
 
-Quiero empezar agradeciendo a Gómez-Gardeñes, Gómez, Arenas y Moreno un trabajo que se deja reproducir. Lo que sigue es una reproducción, no un resultado nuevo.
+Últimamente parece que las nuevas tecnologías sirven sobre todo para producir contenido: más textos, más imágenes, más vídeos, a toda velocidad y casi siempre iguales. A mí me interesa lo contrario: usar estas herramientas en algo que se pueda comprobar y que sirva de verdad. Para entender un problema científico, escribir código que funcione y dejarlo abierto para que otra persona lo repita y lo corrija.
+
+Así que me puse un ejercicio concreto: coger un artículo científico serio y reproducirlo desde cero, con un lenguaje moderno (Rust) y con ayuda de herramientas de IA para leer, programar y revisar, comprobando cada resultado contra la teoría y contra lo publicado. Sin atajos: si algo no coincide, se cuenta.
+
+Y quiero agradecer a Gómez-Gardeñes, Gómez, Arenas y Moreno un trabajo que se deja reproducir. Lo que sigue es una reproducción, no un resultado nuevo.
 
 **El trabajo.** En un modelo de Kuramoto sobre una red, cada nodo oscila con una frecuencia propia y se acopla a sus vecinos con intensidad λ. Si la frecuencia de cada nodo es igual a su grado y la red es libre de escala, la sincronización aparece de golpe y con histéresis (primer orden). En redes más homogéneas, la transición es continua. Además, el grafo estrella (un hub y K hojas) tiene solución analítica.
 
