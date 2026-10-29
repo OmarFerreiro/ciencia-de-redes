@@ -1,0 +1,26 @@
+# Entorno
+CPU(s):                                  4
+Model name:                              Intel(R) Core(TM) i5-7200U CPU @ 2.50GHz
+rustc: rustc 1.99.1 (58cf8f9c3 2026-10-13)
+g++: g++ (Ubuntu 15.2.0-16ubuntu1) 15.2.0
+python: Python 3.14.4
+
+# Verificación (1000 pasos): r y theta_0 deben coincidir
+rust r=0.121070072935 th0=121.641836800533 us_por_paso=171.959
+cpp r=0.121070072935 th0=121.641836800533 us_por_paso=202.681
+python r=0.121070072935 th0=121.641836800533 us_por_paso=3670.392
+
+# Tiempos (µs por paso RK4; 5 repeticiones Rust/C++, 3 Python)
+rust r=0.028276645414 th0=2450.875996667692 us_por_paso=162.498
+rust r=0.028276645414 th0=2450.875996667692 us_por_paso=165.506
+rust r=0.028276645414 th0=2450.875996667692 us_por_paso=188.078
+rust r=0.028276645414 th0=2450.875996667692 us_por_paso=163.453
+rust r=0.028276645414 th0=2450.875996667692 us_por_paso=169.621
+cpp r=0.028276645414 th0=2450.875996667692 us_por_paso=200.102
+cpp r=0.028276645414 th0=2450.875996667692 us_por_paso=209.402
+cpp r=0.028276645414 th0=2450.875996667692 us_por_paso=205.267
+cpp r=0.028276645414 th0=2450.875996667692 us_por_paso=222.065
+cpp r=0.028276645414 th0=2450.875996667692 us_por_paso=227.808
+python r=0.073023578490 th0=36.062766244988 us_por_paso=3251.365
+python r=0.073023578490 th0=36.062766244988 us_por_paso=3318.191
+python r=0.073023578490 th0=36.062766244988 us_por_paso=3259.881

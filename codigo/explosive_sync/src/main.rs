@@ -423,6 +423,44 @@ fn main() {
                 .unwrap();
             }
         }
+        "export" if a.len() == 7 => {
+            // export <alpha> <n> <k_medio> <semilla> <salida.txt>: lista de enlaces para el benchmark.
+            let alpha: f64 = a[2].parse().unwrap();
+            let n: usize = a[3].parse().unwrap();
+            let kmean: f64 = a[4].parse().unwrap();
+            let seed: u64 = a[5].parse().unwrap();
+            let mut rng = ChaCha8Rng::seed_from_u64(seed);
+            let g = ba_er(n, (kmean / 2.0).round() as usize, alpha, &mut rng);
+            let mut f = std::io::BufWriter::new(std::fs::File::create(&a[6]).unwrap());
+            writeln!(f, "{} {}", n, g.neighbors.len() / 2).unwrap();
+            for i in 0..n {
+                for &j in &g.neighbors[g.offsets[i]..g.offsets[i + 1]] {
+                    if (j as usize) > i {
+                        writeln!(f, "{i} {j}").unwrap();
+                    }
+                }
+            }
+        }
+        "bench" if a.len() == 6 => {
+            // bench <enlaces.txt> <lambda> <dt> <pasos>: mismo problema en las tres implementaciones.
+            let text = std::fs::read_to_string(&a[2]).unwrap();
+            let mut it = text.split_ascii_whitespace().map(|x| x.parse::<usize>().unwrap());
+            let (n, e) = (it.next().unwrap(), it.next().unwrap());
+            let edges: Vec<(usize, usize)> = (0..e).map(|_| (it.next().unwrap(), it.next().unwrap())).collect();
+            let g = Graph::from_edges(n, &edges);
+            let lam: f64 = a[3].parse().unwrap();
+            let dt: f64 = a[4].parse().unwrap();
+            let steps: usize = a[5].parse().unwrap();
+            let omega: Vec<f64> = (0..n).map(|i| g.degree(i) as f64).collect();
+            let mut th: Vec<f64> = (0..n).map(|i| std::f64::consts::TAU * ((i as f64 * 0.6180339887498949) % 1.0)).collect();
+            let mut w = Work::new(n);
+            let t0 = std::time::Instant::now();
+            for _ in 0..steps {
+                rk4(&g, &omega, lam, &mut th, dt, &mut w);
+            }
+            let s = t0.elapsed().as_secs_f64();
+            println!("rust r={:.12} th0={:.12} us_por_paso={:.3}", order_parameter(&th), th[0], s / steps as f64 * 1e6);
+        }
         "plot" if a.len() == 5 => plot_svg(&a[2], &a[3], &a[4]),
         _ => {
             eprintln!("Uso:\n  explosive_sync sweep <alpha> <n> <k_medio> <n_redes> <lmin> <lmax> <dl> <salida.csv>\n  explosive_sync star <K> <dl> <salida.csv>\n  explosive_sync plot <entrada.csv> <salida.svg> \"<titulo>\"");
