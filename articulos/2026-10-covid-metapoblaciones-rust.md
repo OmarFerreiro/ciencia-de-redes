@@ -1,0 +1,31 @@
+# Reproducir un modelo de COVID-19 en Rust: lo que se puede comprobar sin datos reales
+
+*Serie "Ciencia de Redes": lectura y reproducción de trabajos del grupo BIFI/COSNET (Universidad de Zaragoza) y de su entorno.*
+
+> **Borrador.** Antes de publicar: (1) poner una etiqueta (`v0.2`) en el commit que se cite, (2) revisar cifras y citas, (3) decidir si se adjunta `codigo/covid_mmca/resultados/fig3_sintetica.svg` (pasarla a PNG; es de datos inventados y así debe decirse), (4) valorar escribir a los autores las dos dudas del final antes de publicar, (5) cambiar el enlace del artículo anterior (el marcador está abajo).
+
+---
+
+Después del primer ejercicio, quise probar con algo más cercano a la vida real: un modelo de la epidemia de COVID-19 en España. La idea sigue siendo la misma: reproducir con un lenguaje moderno (Rust), con ayuda de herramientas de IA, y contar qué coincide y qué no.
+
+El artículo es "Modeling the Spatiotemporal Epidemic Spreading of COVID-19 and the Impact of Mobility and Social Distancing Interventions", de Alex Arenas, Wesley Cota, Jesús Gómez-Gardeñes, Sergio Gómez, Clara Granell, Joan T. Matamalas, David Soriano-Paños y Benjamin Steinegger (Physical Review X 10, 041055, 2020). Varios de ellos trabajan en el BIFI de la Universidad de Zaragoza. Es de acceso abierto, y los autores publicaron su código en Julia, así que lo mío es una verificación independiente, no una novedad.
+
+**Qué dice.** Cada municipio es un nodo, con tres grupos de edad y diez estados clínicos (del contagio a la UCI). Solo los adultos se mueven entre municipios. El confinamiento reduce la movilidad y los contactos. Con él, los autores obtienen una fórmula para el número reproductivo R(t) y un nivel crítico de confinamiento a partir del cual la curva se dobla en lugar de aplanarse.
+
+**Qué hice.** Programé el núcleo con datos sintéticos (4 parches inventados) y fui comprobando propiedades que el modelo debe cumplir, sin depender de datos reales:
+
+- Las probabilidades de cada parche suman 1 en cada paso, con error de 10⁻¹⁵.
+- Si cambio el orden de los parches o multiplico población y superficie por 10, el resultado no cambia.
+- En un parche sin confinamiento, el tamaño final de la epidemia coincide con la ecuación clásica (0.9956 en ambos).
+- El confinamiento crítico de la fórmula (0.563) difiere un poco del simulado (0.578). La razón: el modelo calcula el contagio como 1 − (1 − β)^x, que para x pequeño es un 4 % mayor que β·x. Con ese ajuste, ambos coinciden. La fórmula del artículo es una aproximación, no un error.
+- R(t) cumple una identidad de conteo (cada nueva infección tiene un único infectante) con una matriz de contactos recíproca.
+
+**Dos dudas que conviene aclarar con quien conoce el modelo.** Con la matriz de contactos de la Tabla I, la fórmula de R usa los contactos del infectante y la dinámica los del susceptible; solo coinciden si la matriz es recíproca, y la de la tabla no lo es. Además, con los parámetros tal como los leo, R al inicio sale en torno a 5 en adultos, por encima del R₀ ≈ 3 que menciona el resumen. Puede ser un error mío.
+
+**Qué no hice.** No reproduje las figuras con datos de España: la matriz de movilidad de 2011 no parece publicada completa y no he encontrado la serie de confinamiento. Tampoco comparé con el código en Julia. La gráfica del repositorio usa un confinamiento inventado y solo muestra la forma.
+
+**Código y datos:** https://github.com/OmarFerreiro/ciencia-de-redes · etiqueta `v0.2`
+
+Si alguien del grupo ve algo mal en mi lectura, me encantará que me lo diga.
+
+#CienciaDeRedes #Epidemiología #COVID19 #Rust #ModelosMatemáticos
