@@ -2,7 +2,7 @@
 
 *Serie "Ciencia de Redes": lectura y reproducción de trabajos del grupo BIFI/COSNET (Universidad de Zaragoza) y de su entorno.*
 
-> **Borrador.** Antes de publicar: (1) poner una etiqueta (`v0.2`) en el commit que se cite, (2) revisar cifras y citas, (3) decidir si se adjunta `codigo/covid_mmca/resultados/fig3_sintetica.svg` (pasarla a PNG; es de datos inventados y así debe decirse), (4) valorar escribir a los autores las dos dudas del final antes de publicar, (5) cambiar el enlace del artículo anterior (el marcador está abajo).
+> **Borrador.** Antes de publicar: (1) poner una etiqueta (`v0.2`) en el commit que se cite, (2) revisar cifras y citas, (3) decidir si se adjunta `codigo/covid_mmca/resultados/fig3_sintetica.svg` (pasarla a PNG; es de datos inventados y así debe decirse), (4) valorar escribir a los autores las dos dudas del final antes de publicar,.
 
 ---
 
