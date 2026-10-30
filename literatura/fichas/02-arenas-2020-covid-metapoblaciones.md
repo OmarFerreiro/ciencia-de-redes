@@ -62,3 +62,14 @@ Código: `codigo/covid_mmca/` (núcleo MMCA con datos sintéticos; detalles en s
 - **κ crítico (Ec. 51) frente a simulación,** parche único de adultos: 0.563 con la β del artículo, 0.578 simulado; con β efectiva −ln(1−β), 0.578 (coinciden a 10⁻³). La Ec. 51 es una aproximación válida salvo ese 4 % de la infectividad.
 - **Escenario sintético:** con κ = 0.6 desde el día 30, el pico de incidencia se alcanza el día 30 y después cae (régimen de "doblar" la curva, cualitativamente como la Fig. 5b). No se compara con datos reales.
 - **Pendiente:** contrastar las Ecs. 13, 14 y 23 con el PDF original; R(t) general (Ec. 42); sembrado y condiciones iniciales; datos del INE; cotejo con el código en Julia.
+
+## R(t) y figura tipo Fig. 3 (2026-10-30)
+
+Código y resultados en `codigo/covid_mmca/` (ver su README). Ecs. 29-43 implementadas y comprobadas con datos sintéticos:
+
+- R(t) de la Ec. 40 coincide con la fórmula estática de la Ec. 45 (< 10⁻⁴).
+- Identidad de conteo (Σ e·R = Σ e): 0.997 con contactos recíprocos y β efectiva; 0.965 con la β del artículo.
+- Frente a un estimador de renovación (tipo EpiEstim), R(t) baja de 1 con 1.1 días de diferencia tras corregir el tiempo de generación medio (7.1 d). El artículo da unos 2 días con datos reales.
+- **Fig. 3 del artículo: no reproducida.** Requiere κ₀(t) del INE. La figura propia usa un κ₀(t) inventado y solo comprueba la forma cualitativa.
+- **Hallazgo:** la Ec. 41 usa los contactos del infectante y la dinámica los del susceptible; solo coinciden con una matriz de contactos recíproca, y la de la Tabla I no lo es.
+- **Duda:** R inicial calculado ≈ 5 (adultos), 3.4 (jóvenes), 2.7 (mayores) con las tablas, frente al R₀ ≈ 3 citado.

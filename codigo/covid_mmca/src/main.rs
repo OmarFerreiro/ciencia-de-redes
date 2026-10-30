@@ -55,8 +55,18 @@ struct Params {
     epi: Epi,
     phi: f64,
     delta: f64,
-    kappa: f64,          // confinamiento constante a partir de tc
+    kappa: Vec<f64>,     // κ0(t) por día desde t = 0 (se aplica a partir de tc)
     tc: usize,
+}
+
+struct Ctx {
+    kap: f64,
+    conf: bool,
+    mm: Vec<Vec<f64>>, // mm[g][j*np + i] = M^g_ji
+    nt: Vec<f64>,
+    f: Vec<f64>,
+    kg: Vec<f64>,
+    z: Vec<f64>,
 }
 
 fn idx(ng: usize, np: usize, m: usize, g: usize, i: usize) -> usize {
@@ -64,10 +74,20 @@ fn idx(ng: usize, np: usize, m: usize, g: usize, i: usize) -> usize {
 }
 
 impl Params {
-    fn step(&self, rho: &mut [f64], t: usize) {
+    /// Confinamiento κ0(t): 0 antes de tc y, después, la serie diaria (el último valor se mantiene).
+    fn kap_at(&self, t: usize) -> f64 {
+        if t < self.tc {
+            0.0
+        } else {
+            self.kappa[t.min(self.kappa.len() - 1)]
+        }
+    }
+
+    /// Cantidades que dependen de t pero no de las probabilidades ρ: matrices M, ñ, f, <k_g>(t), z_g(t).
+    fn ctx(&self, t: usize) -> Ctx {
         let (ng, np) = (self.ng, self.np);
         let conf = t >= self.tc;
-        let kap = if conf { self.kappa } else { 0.0 };
+        let kap = self.kap_at(t);
 
         // Matrices efectivas M^g_ji = (1-p) δ_ij + p R_ji y población efectiva
         let mut mm = vec![vec![0.0; np * np]; ng]; // mm[g][j*np + i]
@@ -110,6 +130,12 @@ impl Params {
                 ng_tot / den
             })
             .collect();
+        Ctx { kap, conf, mm, nt, f, kg, z }
+    }
+
+    fn step(&self, rho: &mut [f64], t: usize) {
+        let (ng, np) = (self.ng, self.np);
+        let Ctx { kap, conf, mm, nt, f, kg, z } = self.ctx(t);
 
         // infecciosos presentes por parche: ih[m][h][i] = Σ_j n^h_j ρ^{m,h}_j M^h_ji / ñ^h_i
         let mut ih = vec![vec![0.0; ng * np]; 2];
@@ -243,7 +269,7 @@ fn single_patch(kappa: f64) -> Params {
         },
         phi: 0.174,
         delta: 0.207,
-        kappa,
+        kappa: vec![kappa],
         tc: 0,
     }
 }
@@ -286,7 +312,7 @@ fn synthetic(kappa: f64, tc: usize) -> Params {
         epi: epi_spain(),
         phi: 0.174,
         delta: 0.207,
-        kappa,
+        kappa: vec![kappa],
         tc,
     }
 }
@@ -354,6 +380,220 @@ fn kappa_c_numeric() -> f64 {
     0.5 * (lo + hi)
 }
 
+fn simulate(p: &Params, rho0: Vec<f64>, steps: usize) -> Vec<Vec<f64>> {
+    let mut traj = vec![rho0];
+    for t in 0..steps {
+        let mut r = traj[t].clone();
+        p.step(&mut r, t);
+        traj.push(r);
+    }
+    traj
+}
+
+/// Peso de infectividad τ pasos después de la exposición: ζ_A(τ) β_A + ζ_I(τ) β_I (Ecs. 34-36).
+fn infectivity_profile(p: &Params, g: usize, len: usize, beta_a: f64, beta_i: f64) -> Vec<f64> {
+    let ep = &p.epi;
+    let (mut ze, mut za, mut zi) = (1.0, 0.0, 0.0);
+    let mut w = Vec::with_capacity(len);
+    for _ in 0..len {
+        w.push(za * beta_a + zi * beta_i);
+        let (e2, a2, i2) = (
+            (1.0 - ep.eta[g]) * ze,
+            ep.eta[g] * ze + (1.0 - ep.alpha[g]) * za,
+            ep.alpha[g] * za + (1.0 - ep.mu[g]) * zi,
+        );
+        ze = e2;
+        za = a2;
+        zi = i2;
+    }
+    w
+}
+
+/// Q^g_i(s): contactos susceptibles de un infectado de (g, i) en el instante s (Ec. 32).
+fn kernel(p: &Params, c: &Ctx, rho: &[f64]) -> Vec<f64> {
+    let (ng, np) = (p.ng, p.np);
+    let mut rt = vec![0.0; ng * np]; // ρ̃^{S,h}_j, Ec. 31
+    for h in 0..ng {
+        for j in 0..np {
+            let s: f64 = (0..np)
+                .map(|k| p.pop[h * np + k] * rho[idx(ng, np, S, h, k)] * c.mm[h][k * np + j])
+                .sum();
+            rt[h * np + j] = if c.nt[h * np + j] > 0.0 { s / c.nt[h * np + j] } else { 0.0 };
+        }
+    }
+    let mut q = vec![0.0; ng * np];
+    for g in 0..ng {
+        for i in 0..np {
+            let mut s = 0.0;
+            for j in 0..np {
+                for h in 0..ng {
+                    s += c.z[g] * c.kg[g] * c.f[j] * p.c[g * ng + h] * c.mm[g][i * np + j] * rt[h * np + j];
+                }
+            }
+            q[g * np + i] = s;
+        }
+    }
+    q
+}
+
+struct Repro {
+    r: Vec<f64>,         // R(t), Ec. 42
+    rg: Vec<Vec<f64>>,   // R_g(t), Ec. 43, índice [g][t]
+    expo: Vec<f64>,      // nuevos expuestos totales en t (individuos)
+}
+
+/// R^g_i(t) (Ec. 40) para t = 0..=tmax. `traj` debe llegar al menos hasta tmax + horizonte.
+fn reproduction(p: &Params, traj: &[Vec<f64>], beta_a: f64, beta_i: f64, tmax: usize) -> Repro {
+    let (ng, np) = (p.ng, p.np);
+    let q: Vec<Vec<f64>> = (0..traj.len()).map(|s| kernel(p, &p.ctx(s), &traj[s])).collect();
+    let w: Vec<Vec<f64>> = (0..ng).map(|g| infectivity_profile(p, g, traj.len(), beta_a, beta_i)).collect();
+    let mut rgi = vec![vec![0.0; ng * np]; tmax + 1];
+    for t in 0..=tmax {
+        for g in 0..ng {
+            for i in 0..np {
+                rgi[t][g * np + i] = (0..traj.len() - t).map(|tau| w[g][tau] * q[t + tau][g * np + i]).sum();
+            }
+        }
+    }
+    let pool = |rho: &[f64], g: usize, i: usize| rho[idx(ng, np, S, g, i)] + rho[idx(ng, np, CH, g, i)];
+    let mut r = vec![0.0; tmax + 1];
+    let mut rg = vec![vec![0.0; tmax + 1]; ng];
+    let mut expo = vec![0.0; tmax + 1];
+    for t in 0..=tmax {
+        let (mut num, mut den) = (0.0, 0.0);
+        let mut numg = vec![0.0; ng];
+        let mut deng = vec![0.0; ng];
+        for g in 0..ng {
+            for i in 0..np {
+                let e = if t == 0 {
+                    traj[0][idx(ng, np, E, g, i)]
+                } else {
+                    pool(&traj[t - 1], g, i) - pool(&traj[t], g, i)
+                } * p.pop[g * np + i];
+                num += e * rgi[t][g * np + i];
+                den += e;
+                numg[g] += e * rgi[t][g * np + i];
+                deng[g] += e;
+            }
+        }
+        r[t] = if den > 0.0 { num / den } else { f64::NAN };
+        for g in 0..ng {
+            rg[g][t] = if deng[g] > 0.0 { numg[g] / deng[g] } else { f64::NAN };
+        }
+        expo[t] = den;
+    }
+    Repro { r, rg, expo }
+}
+
+/// Serie κ0(t) sintética con la forma de un confinamiento: subida, meseta y relajación parcial.
+fn kappa_series() -> Vec<f64> {
+    (0..200)
+        .map(|t| {
+            let t = t as f64;
+            if t < 14.0 {
+                0.0
+            } else if t < 24.0 {
+                0.85 * (t - 14.0) / 10.0
+            } else if t < 60.0 {
+                0.85
+            } else if t < 90.0 {
+                0.85 - 0.20 * (t - 60.0) / 30.0
+            } else {
+                0.65
+            }
+        })
+        .collect()
+}
+
+/// Día (primer índice) en que la serie baja de 1 tras haber estado por encima de 1.
+fn first_drop_below_one(v: &[f64]) -> Option<usize> {
+    let up = v.iter().position(|&x| x > 1.0)?;
+    (up..v.len()).find(|&t| v[t] < 1.0)
+}
+
+/// Tiempo de generación medio de un perfil de infectividad w(τ).
+fn mean_generation_time(w: &[f64]) -> f64 {
+    let tot: f64 = w.iter().sum();
+    w.iter().enumerate().map(|(t, x)| t as f64 * x).sum::<f64>() / tot
+}
+
+/// Estimador de renovación instantáneo (tipo EpiEstim): R̂(t) = e(t) / Σ_{s≥1} e(t-s) w(s).
+fn renewal_estimate(expo: &[f64], w: &[f64]) -> Vec<f64> {
+    let tot: f64 = w.iter().skip(1).sum();
+    (0..expo.len())
+        .map(|t| {
+            let lam: f64 = (1..=t.min(w.len() - 1)).map(|s| expo[t - s] * w[s] / tot).sum();
+            if lam > 1e-12 { expo[t] / lam } else { f64::NAN }
+        })
+        .collect()
+}
+
+fn svg_lines(title: &str, x: &[f64], series: &[(&str, &str, &Vec<f64>)], ymax: f64) -> String {
+    let (w, h, l, r, t, b) = (680.0, 440.0, 60.0, 20.0, 40.0, 50.0);
+    let xmax = x[x.len() - 1];
+    let px = |v: f64| l + (v / xmax) * (w - l - r);
+    let py = |v: f64| h - b - (v / ymax) * (h - t - b);
+    let mut s = format!(
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {w} {h}\" font-family=\"sans-serif\" font-size=\"12\"><rect width=\"100%\" height=\"100%\" fill=\"#fff\"/>\
+         <text x=\"{}\" y=\"22\" text-anchor=\"middle\" font-size=\"14\">{title}</text>",
+        w / 2.0
+    );
+    for k in 0..=4 {
+        let v = ymax * k as f64 / 4.0;
+        write!(s, "<line x1=\"{l}\" x2=\"{}\" y1=\"{y}\" y2=\"{y}\" stroke=\"#ddd\"/><text x=\"{}\" y=\"{}\" text-anchor=\"end\">{v:.1}</text>", w - r, l - 6.0, py(v) + 4.0, y = py(v)).unwrap();
+    }
+    for k in 0..=5 {
+        let v = xmax * k as f64 / 5.0;
+        write!(s, "<text x=\"{}\" y=\"{}\" text-anchor=\"middle\">{v:.0}</text>", px(v), h - b + 18.0).unwrap();
+    }
+    write!(s, "<line x1=\"{l}\" x2=\"{}\" y1=\"{y}\" y2=\"{y}\" stroke=\"#444\" stroke-dasharray=\"4 3\"/>", w - r, y = py(1.0)).unwrap();
+    write!(s, "<text x=\"{}\" y=\"{}\" text-anchor=\"middle\">día</text><text x=\"16\" y=\"{}\" text-anchor=\"middle\" transform=\"rotate(-90 16 {})\">R(t)</text>", w / 2.0, h - 10.0, h / 2.0, h / 2.0).unwrap();
+    for (k, (name, color, ys)) in series.iter().enumerate() {
+        let pts: Vec<String> = x.iter().zip(ys.iter()).filter(|(_, y)| y.is_finite()).map(|(a, y)| format!("{:.1},{:.1}", px(*a), py(y.min(ymax)))).collect();
+        write!(s, "<polyline fill=\"none\" stroke=\"{color}\" stroke-width=\"2\" points=\"{}\"/>", pts.join(" ")).unwrap();
+        write!(s, "<rect x=\"{}\" y=\"{}\" width=\"12\" height=\"3\" fill=\"{color}\"/><text x=\"{}\" y=\"{}\">{name}</text>", w - 150.0, t + 6.0 + 16.0 * k as f64, w - 134.0, t + 11.0 + 16.0 * k as f64).unwrap();
+    }
+    s.push_str("</svg>");
+    s
+}
+
+/// Escenario con κ constante desde t = 0. Con `recip`, la matriz de contactos se simetriza para que
+/// n_g <k_g> C_gh = n_h <k_h> C_hg (reciprocidad), condición bajo la cual la Ec. 40 es exacta.
+fn const_scenario(recip: bool) -> Params {
+    let mut p = synthetic(0.6, 0);
+    if recip {
+        let kg = p.ctx(0).kg;
+        let ng = p.ng;
+        let n: Vec<f64> = (0..ng).map(|g| (0..p.np).map(|i| p.pop[g * p.np + i]).sum()).collect();
+        let fl = |g: usize, h: usize| n[g] * kg[g] * p.c[g * ng + h];
+        let mut c = vec![0.0; ng * ng];
+        for g in 0..ng {
+            for h in 0..ng {
+                c[g * ng + h] = 0.5 * (fl(g, h) + fl(h, g)) / (n[g] * kg[g]);
+            }
+        }
+        p.c = c;
+    }
+    p
+}
+
+/// Σ_t e(t) R(t) / Σ_{t≥1} e(t): cada nueva exposición tiene un único infectante, así que el cociente vale 1.
+fn identity_ratio(p: &Params, traj: &[Vec<f64>], beta_a: f64, beta_i: f64) -> f64 {
+    let tmax = traj.len() - 150;
+    let rep = reproduction(p, traj, beta_a, beta_i, tmax);
+    let lhs: f64 = (0..=tmax).filter(|&t| rep.expo[t] > 0.0).map(|t| rep.expo[t] * rep.r[t]).sum();
+    let rhs: f64 = (1..=tmax).map(|t| rep.expo[t]).sum();
+    lhs / rhs
+}
+
+fn fig3_scenario() -> (Params, Vec<Vec<f64>>) {
+    let mut p = synthetic(0.0, 14);
+    p.kappa = kappa_series();
+    let rho0 = init(&p, 1e-3, 0, 1);
+    let traj = simulate(&p, rho0, 200);
+    (p, traj)
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     match args.get(1).map(String::as_str) {
@@ -416,7 +656,48 @@ fn main() {
             }
             std::fs::write(out, csv).unwrap();
         }
-        _ => eprintln!("uso: covid_mmca kappa | demo <salida.csv>"),
+        Some("fig3") => {
+            let (csv_path, svg_path) = (args.get(2).expect("falta <salida.csv>"), args.get(3).expect("falta <salida.svg>"));
+            let (p, traj) = fig3_scenario();
+            let (ba, bi) = (p.beta_a, p.beta_i);
+            let rep = reproduction(&p, &traj, ba, bi, 100);
+            let mut csv = String::from("dia,kappa,R,R_jovenes,R_adultos,R_mayores\n");
+            for t in 0..=100 {
+                writeln!(csv, "{t},{:.4},{:.4},{:.4},{:.4},{:.4}", p.kap_at(t), rep.r[t], rep.rg[0][t], rep.rg[1][t], rep.rg[2][t]).unwrap();
+            }
+            std::fs::write(csv_path, csv).unwrap();
+            let x: Vec<f64> = (0..=100).map(|t| t as f64).collect();
+            let svg = svg_lines(
+                "R(t) en un escenario sintético (κ0(t) inventado, no el de España)",
+                &x,
+                &[("R global", "#111", &rep.r), ("jóvenes", "#1f77b4", &rep.rg[0]), ("adultos", "#d62728", &rep.rg[1]), ("mayores", "#2ca02c", &rep.rg[2])],
+                rep.rg.iter().flatten().chain(rep.r.iter()).cloned().filter(|v| v.is_finite()).fold(1.0, f64::max).ceil(),
+            );
+            std::fs::write(svg_path, svg).unwrap();
+        }
+        Some("validar") => {
+            println!("Identidad de conteo: Σ_t e(t)·R(t) / Σ_(t≥1) e(t), confinamiento constante κ = 0.6, régimen subcrítico");
+            let (ba, bi) = (0.5 * 0.075, 0.075);
+            let (ea, ei) = (-(1.0f64 - ba).ln(), -(1.0f64 - bi).ln());
+            for (nombre, recip) in [("matriz C del artículo", false), ("C simetrizada (recíproca)", true)] {
+                let p = const_scenario(recip);
+                let traj = simulate(&p, init(&p, 1e-3, 0, 1), 400);
+                for (bn, a, b) in [("β del artículo", ba, bi), ("β efectiva", ea, ei)] {
+                    println!("  {nombre}, {bn}: {:.4}", identity_ratio(&p, &traj, a, b));
+                }
+            }
+            let (p, traj) = fig3_scenario();
+            let rep = reproduction(&p, &traj, ba, bi, 100);
+            let w = infectivity_profile(&p, 1, 100, ba, bi);
+            let ren = renewal_estimate(&rep.expo, &w);
+            println!(
+                "\nEscenario de la Fig. 3 sintética: R(t) analítico baja de 1 el día {:?}; estimador de renovación el día {:?}; tiempo de generación medio (adultos) {:.1} d",
+                first_drop_below_one(&rep.r),
+                first_drop_below_one(&ren),
+                mean_generation_time(&w)
+            );
+        }
+        _ => eprintln!("uso: covid_mmca kappa | demo <salida.csv> | fig3 <salida.csv> <salida.svg> | validar"),
     }
 }
 
@@ -448,6 +729,38 @@ mod tests {
             p.step(&mut rho, t);
         }
         assert!((0..p.ng * p.np).all(|k| (rho[idx(p.ng, p.np, S, 0, 0) + k] - 1.0).abs() < 1e-15));
+    }
+
+    #[test]
+    fn r_estatico_coincide_con_la_ec_45() {
+        let (ba, bi) = (0.5 * 0.075, 0.075);
+        let mut p = single_patch(0.4);
+        p.pop = vec![1.0e6];
+        let traj = simulate(&p, init(&p, 1e-12, 0, 0), 200);
+        let rep = reproduction(&p, &traj, ba, bi, 30);
+        let est = r_static(0.4, ba, bi);
+        assert!((rep.r[30] - est).abs() / est < 1e-4, "R(30) = {} frente a Ec. 45 = {est}", rep.r[30]);
+    }
+
+    #[test]
+    fn identidad_de_conteo_con_contactos_reciprocos() {
+        let (ba, bi) = (0.5 * 0.075, 0.075);
+        let (ea, ei) = (-(1.0f64 - ba).ln(), -(1.0f64 - bi).ln());
+        let p = const_scenario(true);
+        let traj = simulate(&p, init(&p, 1e-3, 0, 1), 400);
+        let q = identity_ratio(&p, &traj, ea, ei);
+        assert!((q - 1.0).abs() < 0.01, "cociente {q}");
+    }
+
+    #[test]
+    fn cruce_de_r_igual_a_uno_frente_a_estimador_de_renovacion() {
+        let (p, traj) = fig3_scenario();
+        let (ba, bi) = (p.beta_a, p.beta_i);
+        let rep = reproduction(&p, &traj, ba, bi, 100);
+        let w = infectivity_profile(&p, 1, 100, ba, bi);
+        let ren = renewal_estimate(&rep.expo, &w);
+        let (a, b) = (first_drop_below_one(&rep.r).unwrap() as f64, first_drop_below_one(&ren).unwrap() as f64);
+        assert!((a - (b - mean_generation_time(&w))).abs() <= 2.0, "analítico {a}, renovación {b}");
     }
 
     #[test]

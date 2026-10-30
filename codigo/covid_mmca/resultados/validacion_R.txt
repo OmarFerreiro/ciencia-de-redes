@@ -1,0 +1,7 @@
+Identidad de conteo: Σ_t e(t)·R(t) / Σ_(t≥1) e(t), confinamiento constante κ = 0.6, régimen subcrítico
+  matriz C del artículo, β del artículo: 0.9926
+  matriz C del artículo, β efectiva: 1.0258
+  C simetrizada (recíproca), β del artículo: 0.9654
+  C simetrizada (recíproca), β efectiva: 0.9970
+
+Escenario de la Fig. 3 sintética: R(t) analítico baja de 1 el día Some(15); estimador de renovación el día Some(21); tiempo de generación medio (adultos) 7.1 d
