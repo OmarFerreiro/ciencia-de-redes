@@ -48,7 +48,7 @@ Modelo de metapoblaciones por municipios, con tres grupos de edad y diez compart
 - Fórmulas exactas (Ecs. 13, 14, 23) contra el PDF original, no contra el texto extraído.
 - Cómo se siembran los primeros casos y la condición inicial, y la forma exacta de la función de densidad f.
 - Material suplementario (escenarios de contención).
-- Disponibilidad y formato de los datos del INE y de las matrices de contactos.
+- Disponibilidad de los datos: ver [datos-covid-espana.md](../datos-covid-espana.md) (matriz de movilidad de 2011 y κ₀(t) exacta sin localizar).
 
 ## Nota sobre unidades de las tablas (comprobada)
 
