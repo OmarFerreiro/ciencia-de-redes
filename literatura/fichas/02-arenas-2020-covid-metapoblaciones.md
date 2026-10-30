@@ -73,3 +73,7 @@ Código y resultados en `codigo/covid_mmca/` (ver su README). Ecs. 29-43 impleme
 - **Fig. 3 del artículo: no reproducida.** Requiere κ₀(t) del INE. La figura propia usa un κ₀(t) inventado y solo comprueba la forma cualitativa.
 - **Hallazgo:** la Ec. 41 usa los contactos del infectante y la dinámica los del susceptible; solo coinciden con una matriz de contactos recíproca, y la de la Tabla I no lo es.
 - **Duda:** R inicial calculado ≈ 5 (adultos), 3.4 (jóvenes), 2.7 (mayores) con las tablas, frente al R₀ ≈ 3 citado.
+
+## Pruebas sintéticas adicionales (2026-10-30)
+
+Cinco más (11 en total, ver el README del crate): invariancia al reetiquetado de parches y al escalado de población y superficie (diferencias de 10⁻¹⁵ a 10⁻¹²), tamaño final frente a la ecuación clásica (0.9956 en ambos), tasa de ataque decreciente con κ y siembra irrelevante (0.009 % en R). **No se ha comparado con el código oficial en Julia** ni hay convergencia temporal (el paso de un día es parte de la definición del modelo).

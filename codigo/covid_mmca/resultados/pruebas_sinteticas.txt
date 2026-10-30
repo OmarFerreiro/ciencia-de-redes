@@ -1,0 +1,22 @@
+running 11 tests
+test tests::conserva_probabilidad_y_no_negativos ... ok
+test tests::cruce_de_r_igual_a_uno_frente_a_estimador_de_renovacion ... ok
+test tests::identidad_de_conteo_con_contactos_reciprocos ... ok
+test tests::invariante_a_escalar_poblacion_y_superficie ... escala x10: diferencia máxima de probabilidades 8.88e-16
+ok
+test tests::invariante_a_reetiquetar_parches ... reetiquetado: fracción susceptible final 0.968737512801 frente a 0.968737512801
+ok
+test tests::kappa_critico_coincide_con_la_ecuacion_51 ... ok
+test tests::mas_confinamiento_menos_casos ... κ = 0.0: tasa de ataque 0.76603
+κ = 0.2: tasa de ataque 0.63188
+κ = 0.4: tasa de ataque 0.32252
+κ = 0.6: tasa de ataque 0.03169
+κ = 0.8: tasa de ataque 0.01352
+ok
+test tests::r_estatico_coincide_con_la_ec_45 ... ok
+test tests::r_no_depende_del_tamano_de_la_siembra ... R(30) con siembra 1e-12: 1.402628; con 1e-5: 1.402503
+ok
+test tests::sin_siembra_no_hay_epidemia ... ok
+test tests::tamano_final_frente_a_la_ecuacion_clasica ... tamaño final: R0 = 5.4604, simulado 0.9956, ecuación 1-exp(-R0 z) 0.9956
+ok
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s

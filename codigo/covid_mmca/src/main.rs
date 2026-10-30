@@ -731,6 +731,99 @@ mod tests {
         assert!((0..p.ng * p.np).all(|k| (rho[idx(p.ng, p.np, S, 0, 0) + k] - 1.0).abs() < 1e-15));
     }
 
+    fn pool_total(p: &Params, rho: &[f64]) -> f64 {
+        let (ng, np) = (p.ng, p.np);
+        let mut s = 0.0;
+        for g in 0..ng {
+            for i in 0..np {
+                s += (rho[idx(ng, np, S, g, i)] + rho[idx(ng, np, CH, g, i)]) * p.pop[g * np + i];
+            }
+        }
+        s / p.pop.iter().sum::<f64>()
+    }
+
+    fn permutar(p: &Params, perm: &[usize]) -> Params {
+        let (ng, np) = (p.ng, p.np);
+        let mut q = p.clone();
+        for g in 0..ng {
+            for (new, &old) in perm.iter().enumerate() {
+                q.pop[g * np + new] = p.pop[g * np + old];
+                for (new2, &old2) in perm.iter().enumerate() {
+                    q.mob[g][new * np + new2] = p.mob[g][old * np + old2];
+                }
+            }
+        }
+        q.area = perm.iter().map(|&o| p.area[o]).collect();
+        q
+    }
+
+    #[test]
+    fn invariante_a_reetiquetar_parches() {
+        let p = synthetic(0.6, 14);
+        let perm = [2usize, 0, 3, 1];
+        let q = permutar(&p, &perm);
+        let new_seed = perm.iter().position(|&o| o == 0).unwrap();
+        let a = simulate(&p, init(&p, 1e-3, 0, 1), 150);
+        let b = simulate(&q, init(&q, 1e-3, new_seed, 1), 150);
+        let da = pool_total(&p, &a[150]);
+        let db = pool_total(&q, &b[150]);
+        println!("reetiquetado: fracción susceptible final {da:.12} frente a {db:.12}");
+        assert!((da - db).abs() < 1e-12);
+    }
+
+    #[test]
+    fn invariante_a_escalar_poblacion_y_superficie() {
+        let p = synthetic(0.6, 14);
+        let mut q = p.clone();
+        q.pop.iter_mut().for_each(|x| *x *= 10.0);
+        q.area.iter_mut().for_each(|x| *x *= 10.0);
+        let a = simulate(&p, init(&p, 1e-3, 0, 1), 150);
+        let b = simulate(&q, init(&q, 1e-3, 0, 1), 150);
+        let d = a[150].iter().zip(&b[150]).map(|(x, y)| (x - y).abs()).fold(0.0, f64::max);
+        println!("escala x10: diferencia máxima de probabilidades {d:.2e}");
+        assert!(d < 1e-12);
+    }
+
+    #[test]
+    fn tamano_final_frente_a_la_ecuacion_clasica() {
+        let (ba, bi) = (0.5 * 0.075, 0.075);
+        let (ea, ei) = (-(1.0f64 - ba).ln(), -(1.0f64 - bi).ln());
+        let mut p = single_patch(0.0);
+        p.tc = usize::MAX;
+        let r0 = (ea / p.epi.alpha[0] + ei / p.epi.mu[0]) * p.k_tot[0];
+        let traj = simulate(&p, init(&p, 1e-6, 0, 0), 500);
+        let sim = 1.0 - pool_total(&p, &traj[500]);
+        let mut z = 0.9;
+        for _ in 0..200 {
+            z = 1.0 - (-r0 * z).exp();
+        }
+        println!("tamaño final: R0 = {r0:.4}, simulado {sim:.4}, ecuación 1-exp(-R0 z) {z:.4}");
+        assert!((sim - z).abs() < 0.01);
+    }
+
+    #[test]
+    fn mas_confinamiento_menos_casos() {
+        let mut prev = f64::INFINITY;
+        for kap in [0.0, 0.2, 0.4, 0.6, 0.8] {
+            let p = synthetic(kap, 14);
+            let traj = simulate(&p, init(&p, 1e-3, 0, 1), 300);
+            let ar = 1.0 - pool_total(&p, &traj[300]);
+            println!("κ = {kap:.1}: tasa de ataque {ar:.5}");
+            assert!(ar <= prev + 1e-12);
+            prev = ar;
+        }
+    }
+
+    #[test]
+    fn r_no_depende_del_tamano_de_la_siembra() {
+        let (ba, bi) = (0.5 * 0.075, 0.075);
+        let p = single_patch(0.4);
+        let r = |seed: f64| reproduction(&p, &simulate(&p, init(&p, seed, 0, 0), 200), ba, bi, 30).r[30];
+        let (a, b) = (r(1e-12), r(1e-5));
+        println!("R(30) con siembra 1e-12: {a:.6}; con 1e-5: {b:.6}");
+        assert!((a - b).abs() / a < 1e-3);
+    }
+
     #[test]
     fn r_estatico_coincide_con_la_ec_45() {
         let (ba, bi) = (0.5 * 0.075, 0.075);

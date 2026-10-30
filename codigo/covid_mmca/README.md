@@ -39,3 +39,13 @@ Comprobaciones nuevas (`cargo test --release`, 6 en total):
 **Hallazgo (a verificar con los autores o el código en Julia):** la Ec. 40/41 usa los contactos del *infectante* (z_g⟨k_g⟩C_gh), mientras que la dinámica (Ec. 13) usa los del *susceptible* (z_h⟨k_h⟩C_hg). Solo coinciden si la matriz de contactos cumple reciprocidad, y la matriz de la Tabla I no la cumple (por ejemplo, n_Y⟨k_Y⟩C_YM ≈ 1.14 frente a n_M⟨k_M⟩C_MY ≈ 1.79 con las fracciones sintéticas). Con esa matriz, la identidad de conteo da 0.993 (con la β del artículo) en el escenario global, pero el R por edades queda sesgado. No sé si el código oficial lo trata distinto.
 
 **Duda abierta:** con los parámetros de las tablas tal como los leo, R al inicio sale en torno a 5 en adultos (0.397 días de infectividad × 13.3 contactos), 3.4 en jóvenes y 2.7 en mayores, por encima del R₀ ≈ 3 que menciona el resumen del artículo. No sé si es una diferencia de definición o de lectura de parámetros por mi parte.
+
+## Pruebas sintéticas adicionales (11 tests en total; salida en `resultados/pruebas_sinteticas.txt`)
+
+7. **Reetiquetado de parches:** permutar el orden de los parches (y su matriz de movilidad) no cambia el resultado (fracción susceptible final 0.968737512801 en ambos casos).
+8. **Escala:** multiplicar por 10 población y superficie deja idénticas las probabilidades (diferencia máxima 9·10⁻¹⁶), como debe ser en un modelo que usa probabilidades y densidades.
+9. **Tamaño final de la epidemia:** parche único sin confinamiento, R₀ = 5.46 (con β efectiva y 13.3 contactos): la simulación da 0.9956 de tasa de ataque y la ecuación clásica z = 1 − exp(−R₀ z), 0.9956. (Mi primer intento falló porque calculé R₀ con los contactos de la fase de confinamiento; el fallo estaba en el test, no en el modelo.)
+10. **Más confinamiento, menos casos:** tasa de ataque 0.766, 0.632, 0.323, 0.032 y 0.014 para κ = 0, 0.2, 0.4, 0.6 y 0.8 (confinamiento desde el día 14, 300 días). Hay un salto entre 0.4 y 0.6, en el rango que da el artículo (Fig. 5b) para la transición entre aplanar y doblar.
+11. **Siembra:** R(30) cambia de 1.402628 a 1.402503 (0.009 %) al multiplicar la siembra por 10⁷.
+
+**No se ha hecho:** convergencia en el paso temporal (el modelo está definido con paso de un día, así que reducirlo no es la misma pregunta; habría que reformularlo como límite continuo) ni comparación con el código en Julia (no está instalado aquí).
